@@ -52,7 +52,10 @@ function Range({ leave }: { leave: () => void }) {
         <section className="pause">
           <small>FOUNDRY / LOCAL RANGE</small>
           <h2>{ready ? "Range ready" : "Opening range"}</h2>
-          <p>{error || "WASD to move · Mouse to aim · Esc to release"}</p>
+          <p>
+            {error ||
+              "WASD to move · Shift to walk / Ctrl to crouch / Space to jump / Mouse to aim · Esc to release"}
+          </p>
           {ready && <button onClick={takeControl}>Resume</button>}{" "}
           <button className="secondary" onClick={leave}>
             Main menu
@@ -85,7 +88,7 @@ function App() {
           <svg
             viewBox="-21 -26 42 52"
             role="img"
-            aria-label="Foundry floor plan showing three cover positions and the entry point"
+            aria-label="Foundry floor plan showing cover and training obstacles and the entry point"
           >
             <defs>
               <pattern
@@ -113,7 +116,7 @@ function App() {
             />
             {barriers.map((b) => (
               <rect
-                key={b.x}
+                key={b.z}
                 x={b.x - b.width / 2}
                 y={-b.z - b.depth / 2}
                 width={b.width}

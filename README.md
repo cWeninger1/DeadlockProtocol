@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Open http://127.0.0.1:5173, select **Enter range**, then **Resume** to capture the mouse. Move with WASD, look with the mouse, and press Escape to release the pointer and return to the menu. The server health endpoint is http://127.0.0.1:2567/health. Ctrl+C stops both services.
+Open http://127.0.0.1:5173, select **Enter range**, then **Resume** to capture the mouse. Move with WASD, hold Shift to walk or Ctrl to crouch, press Space to jump, look with the mouse, and press Escape to release the pointer and return to the menu. The server health endpoint is http://127.0.0.1:2567/health. Ctrl+C stops both services.
 
 For separate terminals use `npm run dev -w @dp/client` and `npm run dev -w @dp/server`. The local range works without Firebase credentials. To initialize your Firebase web app, copy `apps/client/.env.example` to `apps/client/.env.local`, fill in its four web configuration values and restart Vite.
 

@@ -4,19 +4,20 @@ export default defineConfig({
   testMatch: "**/*.spec.ts",
   timeout: 60000,
   use: {
-    baseURL: "http://127.0.0.1:5173",
+    baseURL: "http://127.0.0.1:5174",
     channel: process.env.PW_CHANNEL || undefined,
     launchOptions: { args: ["--enable-unsafe-swiftshader"] },
   },
   webServer: [
     {
-      command: "npm run dev -w @dp/client",
-      url: "http://127.0.0.1:5173",
+      command: "npm run dev -w @dp/client -- --port 5174",
+      url: "http://127.0.0.1:5174",
       timeout: 60000,
     },
     {
       command: "npm run start -w @dp/server",
-      url: "http://127.0.0.1:2567/health",
+      env: { PORT: "2568" },
+      url: "http://127.0.0.1:2568/health",
       timeout: 60000,
     },
   ],

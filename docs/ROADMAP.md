@@ -21,11 +21,11 @@ Deliverable: The project starts locally and a player can load a 3D scene.
 
 ## Phase 2 — FPS gameplay
 
-- [ ] Implement player movement.
-- [ ] Add first-person camera.
-- [ ] Add mouse aiming.
-- [ ] Implement collision.
-- [ ] Add jumping and crouching.
+- [x] Implement player movement.
+- [x] Add first-person camera.
+- [x] Add mouse aiming.
+- [x] Implement collision.
+- [x] Add jumping and crouching.
 - [ ] Implement a pistol.
 - [ ] Implement an assault rifle.
 - [ ] Add hit detection against test targets.
@@ -117,3 +117,5 @@ Deliverable: A browser-accessible multiplayer game.
 - Phase 1 complete. Verified npm ci, formatting, ESLint, strict TypeScript, the client production build, five Vitest cases and three Playwright integration tests in desktop Chrome. Tests cover movement, collision, optional Firebase SDK initialization, menu-to-WebGL navigation, pointer lock, movement on screen, scene re-entry, server health and a real WebSocket room join/leave.
 - Phase 2 starts with acceleration, friction, jumping and crouching. The basic controller already supports horizontal movement, collision and pointer-lock look.
 - Verification limits: production Firebase access, cross-browser performance and networked combat are outstanding. The lazy-loaded Babylon range chunk exceeds the default 500 kB build warning threshold (about 120 kB gzipped). The runtime dependency audit passed. npm reports seven moderate development dependency findings in the ESLint/minimatch chain.
+
+- Phase 2 movement slice complete. Foundry supports run, walk, crouch, jumping, air steering, sliding along solid cover and stepping onto a low curb. Seven unit tests and three Chrome integration tests passed across the suite. The next slice is a pistol, ammunition and a hittable range target. Combat and health remain outstanding.

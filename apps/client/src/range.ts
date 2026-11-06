@@ -6,7 +6,13 @@ import { FreeCamera } from "@babylonjs/core/Cameras/freeCamera";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
-import { range, barriers, walk } from "@dp/game-config";
+import {
+  range,
+  barriers,
+  movement,
+  advancePlayer,
+  spawnPlayer,
+} from "@dp/game-config";
 
 export function startRange(canvas: HTMLCanvasElement, onReady: () => void) {
   const engine = new Engine(canvas, true);
@@ -75,21 +81,42 @@ export function startRange(canvas: HTMLCanvasElement, onReady: () => void) {
         ochre,
       );
   }
+  const movementKeys = new Set([
+    "KeyW",
+    "KeyA",
+    "KeyS",
+    "KeyD",
+    "Space",
+    "ControlLeft",
+    "ControlRight",
+    "ShiftLeft",
+    "ShiftRight",
+  ]);
   const keys = new Set<string>();
-  let position: { x: number; z: number } = { x: 0, z: range.spawnZ };
+  let player = spawnPlayer();
+  let elapsed = 0;
+  let jumpPressed = false;
+  function clearInput() {
+    keys.clear();
+    jumpPressed = false;
+    elapsed = 0;
+  }
   const events = new AbortController();
   const options = { signal: events.signal };
   const active = () => document.pointerLockElement === canvas;
   window.addEventListener(
     "keydown",
     (e) => {
-      if (active()) keys.add(e.code);
+      if (!active() || !movementKeys.has(e.code)) return;
+      e.preventDefault();
+      if (e.code === "Space" && !e.repeat) jumpPressed = true;
+      keys.add(e.code);
     },
     options,
   );
   window.addEventListener("keyup", (e) => keys.delete(e.code), options);
-  window.addEventListener("blur", () => keys.clear(), options);
-  document.addEventListener("pointerlockchange", () => keys.clear(), options);
+  window.addEventListener("blur", clearInput, options);
+  document.addEventListener("pointerlockchange", clearInput, options);
   document.addEventListener(
     "mousemove",
     (e) => {
@@ -105,14 +132,26 @@ export function startRange(canvas: HTMLCanvasElement, onReady: () => void) {
   window.addEventListener("resize", () => engine.resize(), options);
   let rendered = false;
   engine.runRenderLoop(() => {
-    position = walk(
-      position,
-      Number(keys.has("KeyW")) - Number(keys.has("KeyS")),
-      Number(keys.has("KeyD")) - Number(keys.has("KeyA")),
-      camera.rotation.y,
-      engine.getDeltaTime() / 1000,
+    if (active() && document.hasFocus()) {
+      elapsed += Math.min(engine.getDeltaTime() / 1000, 0.1);
+      while (elapsed >= movement.tick) {
+        player = advancePlayer(player, {
+          forward: Number(keys.has("KeyW")) - Number(keys.has("KeyS")),
+          right: Number(keys.has("KeyD")) - Number(keys.has("KeyA")),
+          yaw: camera.rotation.y,
+          walk: keys.has("ShiftLeft") || keys.has("ShiftRight"),
+          crouch: keys.has("ControlLeft") || keys.has("ControlRight"),
+          jump: jumpPressed,
+        });
+        jumpPressed = false;
+        elapsed -= movement.tick;
+      }
+    }
+    camera.position.set(
+      player.x,
+      player.y + (player.crouched ? movement.crouchEyeHeight : range.eyeHeight),
+      player.z,
     );
-    camera.position.set(position.x, range.eyeHeight, position.z);
     scene.render();
     if (!rendered) {
       rendered = true;
