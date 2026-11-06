@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { barriers } from "@dp/game-config";
+import { barriers, rangePistol } from "@dp/game-config";
 import { configureFirebase } from "./firebase";
+import type { RangeHud } from "./range";
 import "./style.css";
 
 configureFirebase();
 
 function Range({ leave }: { leave: () => void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const [hud, setHud] = useState<RangeHud>();
   const [ready, setReady] = useState(false);
   const [locked, setLocked] = useState(false);
   const [error, setError] = useState("");
@@ -17,7 +19,7 @@ function Range({ leave }: { leave: () => void }) {
     import("./range")
       .then(({ startRange }) => {
         if (!cancelled && canvas.current)
-          dispose = startRange(canvas.current, () => setReady(true));
+          dispose = startRange(canvas.current, () => setReady(true), setHud);
       })
       .catch(() => {
         if (!cancelled)
@@ -45,16 +47,36 @@ function Range({ leave }: { leave: () => void }) {
     <main>
       <canvas ref={canvas} aria-label="Foundry 3D range" />
       {locked ? (
-        <span className="reticle" aria-hidden="true">
-          +
-        </span>
+        <>
+          <span className="reticle" aria-hidden="true">
+            +
+          </span>
+          {hud && (
+            <aside className="weapon-hud" aria-label="Range results">
+              <small>{rangePistol.name}</small>
+              <strong aria-label="Ammunition">
+                {hud.magazine} / {hud.reserve}
+              </strong>
+              <span>
+                {hud.reloading
+                  ? "Reloading"
+                  : hud.magazine === 0
+                    ? hud.reserve
+                      ? "R to reload"
+                      : "Out of ammunition"
+                    : "Ready"}
+              </span>
+              <span>Target hits: {hud.hits}</span>
+            </aside>
+          )}
+        </>
       ) : (
         <section className="pause">
           <small>FOUNDRY / LOCAL RANGE</small>
           <h2>{ready ? "Range ready" : "Opening range"}</h2>
           <p>
             {error ||
-              "WASD to move · Shift to walk / Ctrl to crouch / Space to jump / Mouse to aim · Esc to release"}
+              "WASD to move · Shift to walk / Ctrl to crouch / Space to jump / Mouse to aim / Left click to fire / R to reload · Esc to release"}
           </p>
           {ready && <button onClick={takeControl}>Resume</button>}{" "}
           <button className="secondary" onClick={leave}>

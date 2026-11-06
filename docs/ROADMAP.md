@@ -26,10 +26,10 @@ Deliverable: The project starts locally and a player can load a 3D scene.
 - [x] Add mouse aiming.
 - [x] Implement collision.
 - [x] Add jumping and crouching.
-- [ ] Implement a pistol.
+- [x] Implement a pistol.
 - [ ] Implement an assault rifle.
-- [ ] Add hit detection against test targets.
-- [ ] Add ammunition and reloading.
+- [x] Add hit detection against test targets.
+- [x] Add ammunition and reloading.
 - [ ] Add health and death.
 
 Deliverable: A functional single-player FPS sandbox.
@@ -119,3 +119,5 @@ Deliverable: A browser-accessible multiplayer game.
 - Verification limits: production Firebase access, cross-browser performance and networked combat are outstanding. The lazy-loaded Babylon range chunk exceeds the default 500 kB build warning threshold (about 120 kB gzipped). The runtime dependency audit passed. npm reports seven moderate development dependency findings in the ESLint/minimatch chain.
 
 - Phase 2 movement slice complete. Foundry supports run, walk, crouch, jumping, air steering, sliding along solid cover and stepping onto a low curb. Seven unit tests and three Chrome integration tests passed across the suite. The next slice is a pistol, ammunition and a hittable range target. Combat and health remain outstanding.
+
+- Phase 2 pistol slice complete. Chrome verified a hit, a miss, semi-automatic trigger behavior and reserve transfer. Ten unit tests and four integration tests passed across the suite. Next up are the assault rifle and weapon switching, followed by player health and death.

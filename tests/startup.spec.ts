@@ -59,3 +59,30 @@ test("joins and leaves a foundation room over WebSocket", async () => {
   expect(room.roomId).toBeTruthy();
   await room.leave();
 });
+
+test("fires one round per press, registers a plate hit, and reloads", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Enter range" }).click();
+  await page.getByRole("button", { name: "Resume" }).click();
+  const ammo = page.getByLabel("Ammunition");
+  await expect(ammo).toHaveText("12 / 48");
+  await page.mouse.down();
+  await expect(page.getByText("Target hits: 1")).toBeVisible();
+  await page.waitForTimeout(450);
+  await expect(ammo).toHaveText("11 / 48");
+  await page.mouse.up();
+  await page.keyboard.press("r");
+  await expect(page.getByText("Reloading")).toBeVisible();
+  await page.mouse.down();
+  await page.mouse.up();
+  await expect(ammo).toHaveText("12 / 47");
+  await expect(page.getByText("Target hits: 1")).toBeVisible();
+  await page.mouse.move(820, 360);
+  await page.mouse.move(1000, 360);
+  await page.mouse.down();
+  await page.mouse.up();
+  await expect(ammo).toHaveText("11 / 47");
+  await expect(page.getByText("Target hits: 1")).toBeVisible();
+});

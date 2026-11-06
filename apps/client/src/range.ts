@@ -1,3 +1,4 @@
+import "@babylonjs/core/Culling/ray";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
@@ -7,6 +8,10 @@ import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import {
+  equipWeapon,
+  updateWeapon,
+  rangePistol,
+  type WeaponState,
   range,
   barriers,
   movement,
@@ -14,7 +19,17 @@ import {
   spawnPlayer,
 } from "@dp/game-config";
 
-export function startRange(canvas: HTMLCanvasElement, onReady: () => void) {
+export type RangeHud = {
+  magazine: number;
+  reserve: number;
+  reloading: boolean;
+  hits: number;
+};
+export function startRange(
+  canvas: HTMLCanvasElement,
+  onReady: () => void,
+  onHud: (hud: RangeHud) => void,
+) {
   const engine = new Engine(canvas, true);
   const scene = new Scene(engine);
   scene.clearColor = new Color4(0.45, 0.55, 0.57, 1);
@@ -56,6 +71,7 @@ export function startRange(canvas: HTMLCanvasElement, onReady: () => void) {
     const mesh = CreateBox(name, { width, height, depth }, scene);
     mesh.position.set(x, y, z);
     mesh.material = m;
+    return mesh;
   }
   box("slab", 0, -0.2, 0, 32, 0.4, 44, concrete);
   for (const side of [-1, 1]) {
@@ -81,7 +97,47 @@ export function startRange(canvas: HTMLCanvasElement, onReady: () => void) {
         ochre,
       );
   }
+  // Bolt the plate onto the front face of the far freight barrier.
+  const plate = box("target plate", 0, 1.45, 10.91, 1.12, 1.05, 0.12, ochre);
+  const center = box("aiming square", 0, 1.65, 10.84, 0.46, 0.46, 0.04, steel);
+  const slide = box(
+    "pistol slide",
+    0.15,
+    -0.115,
+    0.51,
+    0.075,
+    0.075,
+    0.28,
+    steel,
+  );
+  slide.parent = camera;
+  const grip = box("pistol grip", 0, -0.075, -0.07, 0.063, 0.14, 0.083, brick);
+  grip.parent = slide;
+  grip.rotation.x = -0.15;
+  const sight = box("front sight", 0, 0.043, 0.11, 0.012, 0.016, 0.015, ochre);
+  sight.parent = slide;
+  const flash = box("muzzle flash", 0, 0, 0.175, 0.055, 0.055, 0.085, ochre);
+  flash.parent = slide;
+  flash.setEnabled(false);
+  for (const part of [slide, grip, sight, flash]) part.isPickable = false;
+
+  let weapon: WeaponState = equipWeapon(rangePistol);
+  let tick = 0,
+    hits = 0,
+    lastHit = -100,
+    lastShot = -100;
+  let firePressed = false,
+    reloadPressed = false;
+  const reportHud = () =>
+    onHud({
+      magazine: weapon.magazine,
+      reserve: weapon.reserve,
+      reloading: weapon.reloadEnds !== null,
+      hits,
+    });
+  reportHud();
   const movementKeys = new Set([
+    "KeyR",
     "KeyW",
     "KeyA",
     "KeyS",
@@ -98,18 +154,27 @@ export function startRange(canvas: HTMLCanvasElement, onReady: () => void) {
   let jumpPressed = false;
   function clearInput() {
     keys.clear();
+    firePressed = reloadPressed = false;
     jumpPressed = false;
     elapsed = 0;
   }
   const events = new AbortController();
   const options = { signal: events.signal };
   const active = () => document.pointerLockElement === canvas;
+  document.addEventListener(
+    "mousedown",
+    (e) => {
+      if (active() && e.button === 0) firePressed = true;
+    },
+    options,
+  );
   window.addEventListener(
     "keydown",
     (e) => {
       if (!active() || !movementKeys.has(e.code)) return;
       e.preventDefault();
       if (e.code === "Space" && !e.repeat) jumpPressed = true;
+      if (e.code === "KeyR" && !e.repeat) reloadPressed = true;
       keys.add(e.code);
     },
     options,
@@ -143,15 +208,42 @@ export function startRange(canvas: HTMLCanvasElement, onReady: () => void) {
           crouch: keys.has("ControlLeft") || keys.has("ControlRight"),
           jump: jumpPressed,
         });
+        camera.position.set(
+          player.x,
+          player.y +
+            (player.crouched ? movement.crouchEyeHeight : range.eyeHeight),
+          player.z,
+        );
+        tick++;
+        const previous = weapon;
+        weapon = updateWeapon(
+          rangePistol,
+          weapon,
+          tick,
+          firePressed,
+          reloadPressed,
+        );
+        if (weapon.nextShot !== previous.nextShot) {
+          lastShot = tick;
+          camera.getViewMatrix(true);
+          const hit = scene.pickWithRay(
+            camera.getForwardRay(rangePistol.range),
+          );
+          if (hit?.pickedMesh === plate || hit?.pickedMesh === center) {
+            hits++;
+            lastHit = tick;
+          }
+        }
+        if (weapon !== previous) reportHud();
+        firePressed = reloadPressed = false;
         jumpPressed = false;
         elapsed -= movement.tick;
       }
     }
-    camera.position.set(
-      player.x,
-      player.y + (player.crouched ? movement.crouchEyeHeight : range.eyeHeight),
-      player.z,
-    );
+    flash.setEnabled(tick - lastShot < 3);
+    slide.position.z = 0.51 - Math.max(0, 1 - (tick - lastShot) / 7) * 0.05;
+    slide.rotation.x = weapon.reloadEnds === null ? 0 : 0.55;
+    center.material = tick - lastHit < 10 ? ochre : steel;
     scene.render();
     if (!rendered) {
       rendered = true;
