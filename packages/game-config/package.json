@@ -1,0 +1,6 @@
+{
+  "name": "@dp/game-config",
+  "private": true,
+  "type": "module",
+  "exports": "./index.ts"
+}

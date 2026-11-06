@@ -1,3 +1,4 @@
 # Architecture
+
 Use npm workspaces. The React client owns menus and session lifecycle. Babylon owns the scene, input and frame loop. Dispose the scene and input handlers when returning to the menu. Keep gameplay configuration in packages/game-config and room identifiers in packages/protocol.
 The Node Colyseus server owns network room membership. The initial range is local. Future multiplayer clients will send sequenced input to an authoritative fixed-step simulation. Keep transient gameplay off Firestore. Firebase Authentication and Firestore will support identity and durable player data in Phase 6.

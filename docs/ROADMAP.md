@@ -6,16 +6,16 @@ Work in phases. Each phase must produce working, testable functionality.
 
 ## Phase 1 — Project foundation
 
-- [ ] Initialize monorepo.
-- [ ] Configure TypeScript.
-- [ ] Configure React and Vite.
-- [ ] Configure Babylon.js.
-- [ ] Configure Colyseus server.
-- [ ] Integrate Firebase.
-- [ ] Create development scripts.
-- [ ] Add automated tests.
-- [ ] Create a basic menu.
-- [ ] Create a local 3D test environment.
+- [x] Initialize monorepo.
+- [x] Configure TypeScript.
+- [x] Configure React and Vite.
+- [x] Configure Babylon.js.
+- [x] Configure Colyseus server.
+- [x] Integrate Firebase.
+- [x] Create development scripts.
+- [x] Add automated tests.
+- [x] Create a basic menu.
+- [x] Create a local 3D test environment.
 
 Deliverable: The project starts locally and a player can load a 3D scene.
 
@@ -113,3 +113,7 @@ Deliverable: A browser-accessible multiplayer game.
 ## Execution log
 
 - Established specification and phase gates in an empty repository.
+
+- Phase 1 complete. Verified npm ci, formatting, ESLint, strict TypeScript, the client production build, five Vitest cases and three Playwright integration tests in desktop Chrome. Tests cover movement, collision, optional Firebase SDK initialization, menu-to-WebGL navigation, pointer lock, movement on screen, scene re-entry, server health and a real WebSocket room join/leave.
+- Phase 2 starts with acceleration, friction, jumping and crouching. The basic controller already supports horizontal movement, collision and pointer-lock look.
+- Verification limits: production Firebase access, cross-browser performance and networked combat are outstanding. The lazy-loaded Babylon range chunk exceeds the default 500 kB build warning threshold (about 120 kB gzipped). The runtime dependency audit passed. npm reports seven moderate development dependency findings in the ESLint/minimatch chain.
