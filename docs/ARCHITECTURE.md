@@ -6,3 +6,5 @@ The Node Colyseus server owns network room membership. The initial range is loca
 The controller advances serializable player state at 60 Hz. Babylon samples input, queues jump presses until the next tick and renders the camera at the simulated foot position plus stance height. Both collision and scene geometry use the shared range obstacle definitions. Pointer release pauses simulation and clears pending input.
 
 Shared weapon rules use simulation tick deadlines for firing and reloading. The local range casts a ray from the camera and scores the nearest pickable surface only when it belongs to the target. React receives ammunition and hit updates on weapon transitions. Phase 3 will resolve multiplayer shots on the server.
+
+The serializable loadout stores ammunition and deadlines per weapon plus the active weapon ID and equip deadline. Shared loadout transitions enforce equip timing, firing mode and reload cancellation. The client clears held fire on blur and pointer release. Rifle recoil currently lives in the local camera controller and must move into shared aim simulation before authoritative multiplayer combat.

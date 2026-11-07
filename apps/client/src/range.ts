@@ -8,10 +8,12 @@ import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import {
-  equipWeapon,
-  updateWeapon,
-  rangePistol,
-  type WeaponState,
+  createLoadout,
+  advanceLoadout,
+  switchWeapon,
+  weapons,
+  rangeRifle,
+  type WeaponId,
   range,
   barriers,
   movement,
@@ -20,6 +22,8 @@ import {
 } from "@dp/game-config";
 
 export type RangeHud = {
+  weaponName: string;
+  equipping: boolean;
   magazine: number;
   reserve: number;
   reloading: boolean;
@@ -121,7 +125,28 @@ export function startRange(
   flash.setEnabled(false);
   for (const part of [slide, grip, sight, flash]) part.isPickable = false;
 
-  let weapon: WeaponState = equipWeapon(rangePistol);
+  const barrel = box("rifle barrel", 0, 0, 0.27, 0.036, 0.036, 0.32, steel);
+  barrel.parent = slide;
+  const magazine = box(
+    "rifle magazine",
+    0,
+    -0.12,
+    0.045,
+    0.06,
+    0.2,
+    0.08,
+    brick,
+  );
+  magazine.parent = slide;
+  barrel.isPickable = magazine.isPickable = false;
+  barrel.setEnabled(false);
+  magazine.setEnabled(false);
+  let loadout = createLoadout();
+  let selected: WeaponId | null = null;
+  let fireHeld = false;
+  let recoil = 0,
+    burst = 0;
+  let wasEquipping = false;
   let tick = 0,
     hits = 0,
     lastHit = -100,
@@ -130,13 +155,17 @@ export function startRange(
     reloadPressed = false;
   const reportHud = () =>
     onHud({
-      magazine: weapon.magazine,
-      reserve: weapon.reserve,
-      reloading: weapon.reloadEnds !== null,
+      weaponName: weapons[loadout.active].name,
+      equipping: tick < loadout.readyAt,
+      magazine: loadout.inventory[loadout.active].magazine,
+      reserve: loadout.inventory[loadout.active].reserve,
+      reloading: loadout.inventory[loadout.active].reloadEnds !== null,
       hits,
     });
   reportHud();
   const movementKeys = new Set([
+    "Digit1",
+    "Digit2",
     "KeyR",
     "KeyW",
     "KeyA",
@@ -154,6 +183,8 @@ export function startRange(
   let jumpPressed = false;
   function clearInput() {
     keys.clear();
+    fireHeld = false;
+    selected = null;
     firePressed = reloadPressed = false;
     jumpPressed = false;
     elapsed = 0;
@@ -164,7 +195,14 @@ export function startRange(
   document.addEventListener(
     "mousedown",
     (e) => {
-      if (active() && e.button === 0) firePressed = true;
+      if (active() && e.button === 0) firePressed = fireHeld = true;
+    },
+    options,
+  );
+  document.addEventListener(
+    "mouseup",
+    (e) => {
+      if (e.button === 0) fireHeld = false;
     },
     options,
   );
@@ -175,6 +213,8 @@ export function startRange(
       e.preventDefault();
       if (e.code === "Space" && !e.repeat) jumpPressed = true;
       if (e.code === "KeyR" && !e.repeat) reloadPressed = true;
+      if (e.code === "Digit1") selected = "rifle";
+      if (e.code === "Digit2") selected = "pistol";
       keys.add(e.code);
     },
     options,
@@ -215,26 +255,56 @@ export function startRange(
           player.z,
         );
         tick++;
-        const previous = weapon;
-        weapon = updateWeapon(
-          rangePistol,
-          weapon,
+        if (selected) {
+          const next = switchWeapon(loadout, selected, tick);
+          if (next !== loadout) {
+            camera.rotation.x = Math.min(1.48, camera.rotation.x + recoil);
+            recoil = burst = 0;
+            lastShot = -100;
+            loadout = next;
+            reportHud();
+          }
+          selected = null;
+        }
+        const previous = loadout.inventory[loadout.active];
+        loadout = advanceLoadout(
+          loadout,
           tick,
           firePressed,
+          fireHeld,
           reloadPressed,
         );
+        const weapon = loadout.inventory[loadout.active];
+        if (tick - lastShot > 12) {
+          const recovery = Math.min(recoil, rangeRifle.recoilRecovery);
+          recoil -= recovery;
+          camera.rotation.x = Math.min(1.48, camera.rotation.x + recovery);
+          if (recoil === 0) burst = 0;
+        }
         if (weapon.nextShot !== previous.nextShot) {
           lastShot = tick;
           camera.getViewMatrix(true);
           const hit = scene.pickWithRay(
-            camera.getForwardRay(rangePistol.range),
+            camera.getForwardRay(weapons[loadout.active].range),
           );
           if (hit?.pickedMesh === plate || hit?.pickedMesh === center) {
             hits++;
             lastHit = tick;
           }
+          if (loadout.active === "rifle") {
+            const kick = Math.min(
+              rangeRifle.recoil[
+                Math.min(burst++, rangeRifle.recoil.length - 1)
+              ],
+              camera.rotation.x + 1.48,
+            );
+            recoil += kick;
+            camera.rotation.x -= kick;
+          }
         }
-        if (weapon !== previous) reportHud();
+        const equipping = tick < loadout.readyAt;
+        if (weapon !== previous || equipping !== wasEquipping) reportHud();
+        wasEquipping = equipping;
         firePressed = reloadPressed = false;
         jumpPressed = false;
         elapsed -= movement.tick;
@@ -242,7 +312,16 @@ export function startRange(
     }
     flash.setEnabled(tick - lastShot < 3);
     slide.position.z = 0.51 - Math.max(0, 1 - (tick - lastShot) / 7) * 0.05;
-    slide.rotation.x = weapon.reloadEnds === null ? 0 : 0.55;
+    const rifle = loadout.active === "rifle";
+    barrel.setEnabled(rifle);
+    magazine.setEnabled(rifle);
+    slide.scaling.z = rifle ? 1.3 : 1;
+    flash.position.z = rifle ? 0.45 : 0.175;
+    slide.rotation.x =
+      loadout.inventory[loadout.active].reloadEnds !== null ||
+      tick < loadout.readyAt
+        ? 0.55
+        : 0;
     center.material = tick - lastHit < 10 ? ochre : steel;
     scene.render();
     if (!rendered) {

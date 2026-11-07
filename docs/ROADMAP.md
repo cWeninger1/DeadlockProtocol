@@ -27,7 +27,7 @@ Deliverable: The project starts locally and a player can load a 3D scene.
 - [x] Implement collision.
 - [x] Add jumping and crouching.
 - [x] Implement a pistol.
-- [ ] Implement an assault rifle.
+- [x] Implement an assault rifle.
 - [x] Add hit detection against test targets.
 - [x] Add ammunition and reloading.
 - [ ] Add health and death.
@@ -121,3 +121,5 @@ Deliverable: A browser-accessible multiplayer game.
 - Phase 2 movement slice complete. Foundry supports run, walk, crouch, jumping, air steering, sliding along solid cover and stepping onto a low curb. Seven unit tests and three Chrome integration tests passed across the suite. The next slice is a pistol, ammunition and a hittable range target. Combat and health remain outstanding.
 
 - Phase 2 pistol slice complete. Chrome verified a hit, a miss, semi-automatic trigger behavior and reserve transfer. Ten unit tests and four integration tests passed across the suite. Next up are the assault rifle and weapon switching, followed by player health and death.
+
+- Phase 2 rifle slice complete. Added the AR30, automatic fire, independent ammunition, equip delays, reload cancellation on switch and recovering vertical recoil. Thirteen unit tests and five Chrome integration tests passed. Player health and death are the next Phase 2 slice. Weapon audio, movement-dependent spread and the full damage/armor model remain outstanding.

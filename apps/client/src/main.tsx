@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { barriers, rangePistol } from "@dp/game-config";
+import { barriers } from "@dp/game-config";
 import { configureFirebase } from "./firebase";
 import type { RangeHud } from "./range";
 import "./style.css";
@@ -53,18 +53,20 @@ function Range({ leave }: { leave: () => void }) {
           </span>
           {hud && (
             <aside className="weapon-hud" aria-label="Range results">
-              <small>{rangePistol.name}</small>
+              <small>{hud.weaponName}</small>
               <strong aria-label="Ammunition">
                 {hud.magazine} / {hud.reserve}
               </strong>
               <span>
-                {hud.reloading
-                  ? "Reloading"
-                  : hud.magazine === 0
-                    ? hud.reserve
-                      ? "R to reload"
-                      : "Out of ammunition"
-                    : "Ready"}
+                {hud.equipping
+                  ? "Equipping"
+                  : hud.reloading
+                    ? "Reloading"
+                    : hud.magazine === 0
+                      ? hud.reserve
+                        ? "R to reload"
+                        : "Out of ammunition"
+                      : "Ready"}
               </span>
               <span>Target hits: {hud.hits}</span>
             </aside>
@@ -76,7 +78,7 @@ function Range({ leave }: { leave: () => void }) {
           <h2>{ready ? "Range ready" : "Opening range"}</h2>
           <p>
             {error ||
-              "WASD to move · Shift to walk / Ctrl to crouch / Space to jump / Mouse to aim / Left click to fire / R to reload · Esc to release"}
+              "WASD to move · Shift to walk / Ctrl to crouch / Space to jump / Mouse to aim / 1 rifle / 2 pistol / Left click to fire / R to reload · Esc to release"}
           </p>
           {ready && <button onClick={takeControl}>Resume</button>}{" "}
           <button className="secondary" onClick={leave}>

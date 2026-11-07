@@ -86,3 +86,46 @@ test("fires one round per press, registers a plate hit, and reloads", async ({
   await expect(ammo).toHaveText("11 / 47");
   await expect(page.getByText("Target hits: 1")).toBeVisible();
 });
+
+test("switches weapons, fires a rifle burst, preserves ammunition and clears held fire on pause", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Enter range" }).click();
+  await page.getByRole("button", { name: "Resume" }).click();
+  const ammo = page.getByLabel("Ammunition");
+  await page.keyboard.press("1");
+  await expect(page.getByText("AR30 Rifle", { exact: true })).toBeVisible();
+  await expect(page.getByText("Ready", { exact: true })).toBeVisible();
+  await expect(ammo).toHaveText("30 / 90");
+  await page.mouse.down();
+  await expect
+    .poll(async () => Number((await ammo.innerText()).split(" / ")[0]))
+    .toBeLessThan(28);
+  await page.mouse.up();
+  await page.waitForTimeout(150);
+  const remaining = Number((await ammo.innerText()).split(" / ")[0]);
+  await page.waitForTimeout(250);
+  await expect(ammo).toHaveText(remaining + " / 90");
+  await page.keyboard.press("r");
+  await expect(page.getByText("Reloading", { exact: true })).toBeVisible();
+  await page.keyboard.press("2");
+  await expect(page.getByText("F12 Pistol", { exact: true })).toBeVisible();
+  await expect(ammo).toHaveText("12 / 48");
+  await page.keyboard.press("1");
+  await expect(page.getByText("Ready", { exact: true })).toBeVisible();
+  await expect(ammo).toHaveText(remaining + " / 90");
+  await page.keyboard.press("r");
+  await expect(ammo).toHaveText("30 / " + (90 - (30 - remaining)));
+  await page.mouse.down();
+  await expect
+    .poll(async () => Number((await ammo.innerText()).split(" / ")[0]))
+    .toBeLessThan(30);
+  await page.evaluate(() => document.exitPointerLock());
+  await page.mouse.up();
+  await page.getByRole("button", { name: "Resume" }).click();
+  await expect(page.getByText("Ready", { exact: true })).toBeVisible();
+  const resumed = await ammo.innerText();
+  await page.waitForTimeout(300);
+  await expect(ammo).toHaveText(resumed);
+});
