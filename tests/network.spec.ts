@@ -153,3 +153,107 @@ test("renders continuous predicted movement with delayed WebSocket traffic", asy
   await page.evaluate(() => document.exitPointerLock());
   await page.getByRole("button", { name: "Main menu" }).click();
 });
+
+test("preserves a jump and direction changes delivered together after a slow frame", async () => {
+  const room = await new Client("http://127.0.0.1:2568").joinOrCreate(
+    MOVEMENT_ROOM,
+  );
+  let latest: Snapshot | undefined;
+  room.onMessage<Snapshot>("snapshot", (s) => {
+    latest = s;
+  });
+  try {
+    await expect.poll(() => latest?.players.length).toBe(1);
+    for (let sequence = 1; sequence <= 6; sequence++)
+      room.send("input", {
+        ...idleInput,
+        right: sequence < 4 ? 1 : -1,
+        forward: 1,
+        jump: sequence === 5,
+        sequence,
+      });
+    await expect
+      .poll(() => latest?.players[0].sequence, { timeout: 1500 })
+      .toBe(6);
+    expect(latest!.players[0].player.y).toBeGreaterThan(0);
+  } finally {
+    await room.leave();
+  }
+});
+
+test("jumping in changing directions stays smooth when movement messages arrive in batches", async ({
+  page,
+}) => {
+  await page.routeWebSocket("**/*", (socket) => {
+    const server = socket.connectToServer();
+    let open = true;
+    const pending: (string | Buffer)[] = [];
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    socket.onClose(() => {
+      open = false;
+      clearTimeout(timer);
+      server.close();
+    });
+    server.onClose(() => {
+      open = false;
+      clearTimeout(timer);
+      socket.close();
+    });
+    socket.onMessage((message) => {
+      pending.push(message);
+      if (!timer)
+        timer = setTimeout(() => {
+          timer = undefined;
+          if (open) for (const entry of pending.splice(0)) server.send(entry);
+        }, 100);
+    });
+    server.onMessage((message) => {
+      if (open) socket.send(message);
+    });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Join movement room" }).click();
+  await expect(page.getByRole("status")).toContainText("Players 1/2");
+  await page.getByRole("button", { name: "Resume" }).click();
+  await expect
+    .poll(() => page.evaluate(() => document.pointerLockElement?.tagName))
+    .toBe("CANVAS");
+  const recording = page.evaluate(async (moduleUrl) => {
+    const { Engine } = await import(moduleUrl);
+    const scene = Engine.Instances[0].scenes[0];
+    return new Promise<{ y: number; time: number }[]>((resolve) => {
+      const points: { y: number; time: number }[] = [];
+      const start = performance.now();
+      const observer = scene.onAfterRenderObservable.add(() => {
+        points.push({
+          y: scene.activeCamera.position.y,
+          time: performance.now(),
+        });
+        if (performance.now() - start > 3100) {
+          scene.onAfterRenderObservable.remove(observer);
+          resolve(points);
+        }
+      });
+    });
+  }, "/node_modules/.vite/deps/@babylonjs_core_Engines_engine.js");
+  for (const key of ["d", "a", "s", "w"]) {
+    await page.keyboard.down(key);
+    await page.keyboard.press("Space");
+    await page.waitForTimeout(700);
+    await page.keyboard.up(key);
+  }
+  const points = await recording;
+  expect(Math.max(...points.map((p) => p.y))).toBeGreaterThan(2.3);
+  const rates = points
+    .slice(1)
+    .map((p, i) => ({
+      dy: Math.abs(p.y - points[i].y),
+      dt: (p.time - points[i].time) / 1000,
+    }))
+    .filter((p) => p.dt > 0.005 && p.dt < 0.035);
+  expect(rates.length).toBeGreaterThan(80);
+  expect(Math.max(...rates.map((p) => p.dy / p.dt))).toBeLessThan(7.5);
+  expect(points.at(-1)!.y).toBeCloseTo(1.7, 1);
+  await page.evaluate(() => document.exitPointerLock());
+  await page.getByRole("button", { name: "Main menu" }).click();
+});

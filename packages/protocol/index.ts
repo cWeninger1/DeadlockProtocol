@@ -5,7 +5,7 @@ export const network = {
   tickMs: 1000 / 60,
   snapshotEvery: 3,
   inputTimeoutTicks: 30,
-  maxMessagesPerTick: 4,
+  maxQueuedInputs: 30,
 } as const;
 export const idleInput: Intent = {
   forward: 0,
