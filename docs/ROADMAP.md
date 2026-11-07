@@ -39,7 +39,7 @@ Deliverable: A functional single-player FPS sandbox.
 - [x] Create multiplayer rooms.
 - [x] Add multiple connected players.
 - [x] Implement authoritative movement.
-- [ ] Implement prediction and reconciliation.
+- [x] Implement prediction and reconciliation.
 - [ ] Synchronize weapon actions.
 - [ ] Add server-authoritative damage.
 - [ ] Add deaths and respawning.
@@ -127,3 +127,5 @@ Deliverable: A browser-accessible multiplayer game.
 - Phase 2 sandbox complete. Added 100 HP player and target health, weapon damage against the practice plate, target reset, a marked hazard area, death input lockout and session respawn. Verified 16 unit tests, seven Chrome integration tests, formatting, lint, strict TypeScript and production build. Phase 3 begins with two connected players and authoritative movement. Advanced hitboxes, armor, weapon audio and movement accuracy remain planned work. Cross-browser and performance targets remain unverified.
 
 - Phase 3 movement slice verified. Two browser sessions join Foundry, see remote movement and remove departing players. Colyseus advances shared movement at 60 Hz with 20 Hz snapshots, input validation, message limits and stale-input expiry. Verified 16 unit tests, all seven existing browser/integration flows, and three new networking tests including forged fields, burst input and failed joins. Formatting, lint, strict TypeScript and production build pass. Prediction, reconciliation and networked combat remain outstanding. Internet latency, automatic reconnection and cross-machine hosting remain unverified.
+
+- Fixed reported camera choppiness. Replaced direct 20 Hz snapshot camera updates with local prediction, acknowledged-input replay and render interpolation. Added buffered remote interpolation and smooth crouch height. Verified 18 unit tests, the ten existing browser/integration tests, plus a new browser test with 100 ms latency in each WebSocket direction. The latency test samples 60 rendered camera positions and checks continuous progress and bounded frame displacement. Formatting, lint, strict TypeScript and build verified. Hardware performance and real internet conditions still require broader testing.

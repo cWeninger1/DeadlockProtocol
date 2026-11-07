@@ -87,3 +87,69 @@ test("a failed join shows a retry path through the menu", async ({ page }) => {
     page.getByRole("button", { name: "Join movement room" }),
   ).toBeVisible();
 });
+
+test("renders continuous predicted movement with delayed WebSocket traffic", async ({
+  page,
+}) => {
+  await page.routeWebSocket("**/*", (socket) => {
+    const server = socket.connectToServer();
+    let open = true;
+    socket.onClose(() => {
+      open = false;
+      server.close();
+    });
+    server.onClose(() => {
+      open = false;
+      socket.close();
+    });
+    socket.onMessage((message) => {
+      setTimeout(() => {
+        if (open) server.send(message);
+      }, 100);
+    });
+    server.onMessage((message) => {
+      setTimeout(() => {
+        if (open) socket.send(message);
+      }, 100);
+    });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Join movement room" }).click();
+  await expect(page.getByRole("status")).toContainText("Players 1/2");
+  await page.getByRole("button", { name: "Resume" }).click();
+  await expect
+    .poll(() => page.evaluate(() => document.pointerLockElement?.tagName))
+    .toBe("CANVAS");
+  await page.keyboard.down("d");
+  await page.waitForTimeout(350);
+  const samples = await page.evaluate(async (moduleUrl) => {
+    const { Engine } = await import(moduleUrl);
+    const scene = Engine.Instances[0].scenes[0];
+    return new Promise<{ x: number; time: number }[]>((resolve) => {
+      const values: { x: number; time: number }[] = [];
+      const observer = scene.onAfterRenderObservable.add(() => {
+        values.push({
+          x: scene.activeCamera.position.x,
+          time: performance.now(),
+        });
+        if (values.length >= 60) {
+          scene.onAfterRenderObservable.remove(observer);
+          resolve(values);
+        }
+      });
+    });
+  }, "/node_modules/.vite/deps/@babylonjs_core_Engines_engine.js");
+  await page.keyboard.up("d");
+  const steps = samples.slice(1).map((value, i) => ({
+    dx: value.x - samples[i].x,
+    dt: value.time - samples[i].time,
+  }));
+  const regular = steps.filter((s) => s.dt > 5 && s.dt < 30);
+  expect(regular.length).toBeGreaterThan(20);
+  expect(
+    regular.filter((s) => s.dx <= 0.001).length / regular.length,
+  ).toBeLessThan(0.15);
+  expect(Math.max(...regular.map((s) => s.dx))).toBeLessThan(0.18);
+  await page.evaluate(() => document.exitPointerLock());
+  await page.getByRole("button", { name: "Main menu" }).click();
+});

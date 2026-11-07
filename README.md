@@ -19,4 +19,4 @@ See [testing](docs/TESTING.md), [roadmap](docs/ROADMAP.md) and [architecture](do
 
 For the damage test, hold A from spawn until you reach the red striped floor on your left. The HUD shows falling health. The death screen provides Respawn, followed by Resume to capture the mouse again.
 
-To try multiplayer movement, start both services with npm run dev, open two browser tabs, and choose **Join movement room** in each. Teal bodies show the other player. This initial room supports movement. Prediction and networked combat are the next development slices. See docs/NETWORKING.md for endpoint configuration.
+To try multiplayer movement, start both services with npm run dev, open two browser tabs, and choose **Join movement room** in each. Teal bodies show the other player. This initial room supports movement. Local prediction and snapshot interpolation smooth movement. Networked combat is the next development slice. See docs/NETWORKING.md for endpoint configuration.

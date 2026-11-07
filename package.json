@@ -10,7 +10,7 @@
     "dev": "concurrently -k -n client,server \"npm run dev -w @dp/client\" \"npm run dev -w @dp/server\"",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run tests/foundation.test.ts tests/firebase.test.ts tests/weapon.test.ts tests/health.test.ts",
+    "test": "vitest run tests/foundation.test.ts tests/firebase.test.ts tests/weapon.test.ts tests/health.test.ts tests/prediction.test.ts",
     "test:e2e": "playwright test",
     "build": "npm run typecheck && npm run build -w @dp/client",
     "format:check": "prettier --check ."

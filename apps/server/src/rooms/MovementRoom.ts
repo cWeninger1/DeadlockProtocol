@@ -13,7 +13,8 @@ type Member = {
   input: InputMessage;
   receivedAt: number;
   messages: number;
-  jump: boolean;
+  queue: InputMessage[];
+  acknowledged: number;
 };
 export class MovementRoom extends Room {
   maxClients = 2;
@@ -28,11 +29,12 @@ export class MovementRoom extends Room {
       if (
         member.messages > network.maxMessagesPerTick ||
         !isInput(value) ||
-        value.sequence <= member.input.sequence
+        value.sequence <= member.input.sequence ||
+        member.queue.length >= 30
       )
         return;
       member.input = value;
-      member.jump ||= value.jump;
+      member.queue.push(value);
       member.receivedAt = this.tick;
     });
     this.setSimulationInterval(() => {
@@ -40,11 +42,13 @@ export class MovementRoom extends Room {
       for (const member of this.members.values()) {
         const fresh =
           this.tick - member.receivedAt <= network.inputTimeoutTicks;
-        member.player = advancePlayer(
-          member.player,
-          fresh ? { ...member.input, jump: member.jump } : idleInput,
-        );
-        member.jump = false;
+        const command = member.queue.shift();
+        if (command) {
+          member.player = advancePlayer(member.player, command);
+          member.acknowledged = command.sequence;
+        } else if (!fresh) {
+          member.player = advancePlayer(member.player, idleInput);
+        }
         member.messages = 0;
       }
       if (this.tick % network.snapshotEvery === 0) {
@@ -54,7 +58,7 @@ export class MovementRoom extends Room {
             id,
             player: m.player,
             yaw: m.input.yaw,
-            sequence: m.input.sequence,
+            sequence: m.acknowledged,
           })),
         };
         this.broadcast("snapshot", snapshot);
@@ -71,7 +75,8 @@ export class MovementRoom extends Room {
       input: { ...idleInput, sequence: 0 },
       receivedAt: this.tick,
       messages: 0,
-      jump: false,
+      queue: [],
+      acknowledged: 0,
     });
   }
   onLeave(client: Client) {

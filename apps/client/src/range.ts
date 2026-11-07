@@ -1,3 +1,4 @@
+import { MovementPrediction } from "./networking/prediction";
 import {
   connectMovement,
   type MovementRoom,
@@ -205,6 +206,10 @@ export function startRange(
     });
   reportHud();
   let authoritative: Snapshot | undefined;
+  const prediction = new MovementPrediction();
+  const snapshotBuffer: { snapshot: Snapshot; time: number }[] = [];
+  let previousPlayer = spawnPlayer();
+  let eyeHeight: number = range.eyeHeight;
   let connected = true;
   const remoteMeshes = new Map<string, Mesh>();
   const remoteMaterial = material("remote player", "#45c9b6");
@@ -213,6 +218,10 @@ export function startRange(
         room,
         (snapshot) => {
           authoritative = snapshot;
+          snapshotBuffer.push({ snapshot, time: performance.now() });
+          if (snapshotBuffer.length > 20) snapshotBuffer.shift();
+          const local = snapshot.players.find((p) => p.id === room?.sessionId);
+          if (local) prediction.reconcile(local, snapshot.tick);
         },
         (status) => {
           connected = status.connected;
@@ -247,7 +256,7 @@ export function startRange(
   let jumpPressed = false;
   function clearInput() {
     keys.clear();
-    connection?.send(idleInput);
+
     fireHeld = false;
     selected = null;
     firePressed = reloadPressed = false;
@@ -303,23 +312,31 @@ export function startRange(
   window.addEventListener("resize", () => engine.resize(), options);
   let rendered = false;
   engine.runRenderLoop(() => {
-    if (active() && document.hasFocus()) {
+    if (
+      (active() && document.hasFocus()) ||
+      (connection && connected && prediction.initialized)
+    ) {
       elapsed += Math.min(engine.getDeltaTime() / 1000, 0.1);
       while (elapsed >= movement.tick) {
-        const intent = {
-          forward: Number(keys.has("KeyW")) - Number(keys.has("KeyS")),
-          right: Number(keys.has("KeyD")) - Number(keys.has("KeyA")),
-          yaw: camera.rotation.y,
-          walk: keys.has("ShiftLeft") || keys.has("ShiftRight"),
-          crouch: keys.has("ControlLeft") || keys.has("ControlRight"),
-          jump: jumpPressed,
-        };
+        const controlling = active() && document.hasFocus();
+        const intent = controlling
+          ? {
+              forward: Number(keys.has("KeyW")) - Number(keys.has("KeyS")),
+              right: Number(keys.has("KeyD")) - Number(keys.has("KeyA")),
+              yaw: camera.rotation.y,
+              walk: keys.has("ShiftLeft") || keys.has("ShiftRight"),
+              crouch: keys.has("ControlLeft") || keys.has("ControlRight"),
+              jump: jumpPressed,
+            }
+          : idleInput;
         if (connection) {
-          connection.send(intent);
+          const command = connection.send(intent);
+          if (command) prediction.step(command);
           jumpPressed = false;
           elapsed -= movement.tick;
           continue;
         }
+        previousPlayer = player;
         player = advancePlayer(player, intent);
         camera.position.set(
           player.x,
@@ -413,15 +430,15 @@ export function startRange(
       }
     }
     if (room && authoritative) {
-      const local = authoritative.players.find((p) => p.id === room.sessionId);
-      if (local) {
-        const p = local.player;
-        camera.position.set(
-          p.x,
-          p.y + (p.crouched ? movement.crouchEyeHeight : range.eyeHeight),
-          p.z,
-        );
-      }
+      const renderTime = performance.now() - 100;
+      while (snapshotBuffer.length > 2 && snapshotBuffer[1].time <= renderTime)
+        snapshotBuffer.shift();
+      const older = snapshotBuffer[0],
+        newer = snapshotBuffer[1] || older;
+      const fraction = Math.max(
+        0,
+        Math.min(1, (renderTime - older.time) / (newer.time - older.time || 1)),
+      );
       for (const entry of authoritative.players) {
         if (entry.id === room.sessionId) continue;
         let mesh = remoteMeshes.get(entry.id);
@@ -438,20 +455,24 @@ export function startRange(
           );
           remoteMeshes.set(entry.id, mesh);
         }
-        const height = entry.player.crouched ? 1.1 : 1.8;
+        const a =
+          older.snapshot.players.find((p) => p.id === entry.id) || entry;
+        const b =
+          newer.snapshot.players.find((p) => p.id === entry.id) || entry;
+        const height =
+          (a.player.crouched ? 1.1 : 1.8) * (1 - fraction) +
+          (b.player.crouched ? 1.1 : 1.8) * fraction;
         mesh.scaling.y = height / 1.8;
-        mesh.position.copyFrom(
-          Vector3.Lerp(
-            mesh.position,
-            new Vector3(
-              entry.player.x,
-              entry.player.y + height / 2,
-              entry.player.z,
-            ),
-            Math.min(1, engine.getDeltaTime() / 50),
-          ),
+        mesh.position.set(
+          a.player.x + (b.player.x - a.player.x) * fraction,
+          a.player.y + (b.player.y - a.player.y) * fraction + height / 2,
+          a.player.z + (b.player.z - a.player.z) * fraction,
         );
-        mesh.rotation.y = entry.yaw;
+        const turn = Math.atan2(
+          Math.sin(b.yaw - a.yaw),
+          Math.cos(b.yaw - a.yaw),
+        );
+        mesh.rotation.y = a.yaw + turn * fraction;
       }
       for (const [id, mesh] of remoteMeshes) {
         if (!authoritative.players.some((p) => p.id === id)) {
@@ -459,6 +480,22 @@ export function startRange(
           remoteMeshes.delete(id);
         }
       }
+    }
+    const alpha = Math.min(1, elapsed / movement.tick);
+    const cameraPlayer = connection ? prediction.current : player;
+    eyeHeight +=
+      ((cameraPlayer.crouched ? movement.crouchEyeHeight : range.eyeHeight) -
+        eyeHeight) *
+      (1 - Math.exp((-25 * engine.getDeltaTime()) / 1000));
+    if (connection && prediction.initialized) {
+      const position = prediction.render(alpha, engine.getDeltaTime() / 1000);
+      camera.position.set(position.x, position.y + eyeHeight, position.z);
+    } else if (!connection) {
+      camera.position.set(
+        previousPlayer.x + (player.x - previousPlayer.x) * alpha,
+        previousPlayer.y + (player.y - previousPlayer.y) * alpha + eyeHeight,
+        previousPlayer.z + (player.z - previousPlayer.z) * alpha,
+      );
     }
     flash.setEnabled(tick - lastShot < 3);
     slide.position.z = 0.51 - Math.max(0, 1 - (tick - lastShot) / 7) * 0.05;

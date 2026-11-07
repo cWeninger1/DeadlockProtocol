@@ -12,3 +12,5 @@ The serializable loadout stores ammunition and deadlines per weapon plus the act
 Health and hazard timing are pure shared rules. Hazard and target reset deadlines advance on the simulation clock, so pausing freezes them. Death blocks input and simulation before any further weapon actions. Respawn disposes the current Babylon session and creates a fresh session through the React lifecycle.
 
 The initial network slice adds a separate movement room entry point. Shared protocol types and input validation live in packages/protocol. Colyseus owns player positions, simulation timing and room membership. The same Babylon range geometry renders both modes. React owns joining and leaving, reports errors and disposes the connection when navigating away.
+
+Movement prediction uses the shared pure controller and a bounded list of unacknowledged commands. Server acknowledgements refer to consumed commands. Reconciliation replays pending commands, with visual correction kept separate from physics. A render-time interpolation step smooths the local camera in both modes, and remote rendering uses a 100 ms snapshot buffer.
