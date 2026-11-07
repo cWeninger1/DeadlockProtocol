@@ -11,7 +11,9 @@
     "@dp/game-config": "*",
     "@firebase/app": "0.14.13",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "@colyseus/sdk": "^0.18.9",
+    "@dp/protocol": "*"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

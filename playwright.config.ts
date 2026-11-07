@@ -1,5 +1,6 @@
 import { defineConfig } from "@playwright/test";
 export default defineConfig({
+  workers: 1,
   testDir: "./tests",
   testMatch: "**/*.spec.ts",
   timeout: 60000,
@@ -11,6 +12,7 @@ export default defineConfig({
   webServer: [
     {
       command: "npm run dev -w @dp/client -- --port 5174",
+      env: { VITE_GAME_SERVER_URL: "http://127.0.0.1:2568" },
       url: "http://127.0.0.1:5174",
       timeout: 60000,
     },

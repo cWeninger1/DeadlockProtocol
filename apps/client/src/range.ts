@@ -1,3 +1,10 @@
+import {
+  connectMovement,
+  type MovementRoom,
+  type NetworkStatus,
+} from "./networking/movement";
+import { idleInput, type Snapshot } from "@dp/protocol";
+import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import "@babylonjs/core/Culling/ray";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
@@ -41,6 +48,8 @@ export function startRange(
   canvas: HTMLCanvasElement,
   onReady: () => void,
   onHud: (hud: RangeHud) => void,
+  room?: MovementRoom,
+  onNetworkStatus: (status: NetworkStatus) => void = () => {},
 ) {
   const engine = new Engine(canvas, true);
   const scene = new Scene(engine);
@@ -195,6 +204,29 @@ export function startRange(
       hits,
     });
   reportHud();
+  let authoritative: Snapshot | undefined;
+  let connected = true;
+  const remoteMeshes = new Map<string, Mesh>();
+  const remoteMaterial = material("remote player", "#45c9b6");
+  const connection = room
+    ? connectMovement(
+        room,
+        (snapshot) => {
+          authoritative = snapshot;
+        },
+        (status) => {
+          connected = status.connected;
+          onNetworkStatus(status);
+          if (!connected && document.pointerLockElement === canvas)
+            document.exitPointerLock();
+        },
+      )
+    : undefined;
+  if (room) {
+    slide.setEnabled(false);
+    plate.setEnabled(false);
+    center.setEnabled(false);
+  }
   const movementKeys = new Set([
     "Digit1",
     "Digit2",
@@ -215,6 +247,7 @@ export function startRange(
   let jumpPressed = false;
   function clearInput() {
     keys.clear();
+    connection?.send(idleInput);
     fireHeld = false;
     selected = null;
     firePressed = reloadPressed = false;
@@ -224,7 +257,7 @@ export function startRange(
   const events = new AbortController();
   const options = { signal: events.signal };
   const active = () =>
-    document.pointerLockElement === canvas && vitals.health > 0;
+    document.pointerLockElement === canvas && vitals.health > 0 && connected;
   document.addEventListener(
     "mousedown",
     (e) => {
@@ -273,14 +306,21 @@ export function startRange(
     if (active() && document.hasFocus()) {
       elapsed += Math.min(engine.getDeltaTime() / 1000, 0.1);
       while (elapsed >= movement.tick) {
-        player = advancePlayer(player, {
+        const intent = {
           forward: Number(keys.has("KeyW")) - Number(keys.has("KeyS")),
           right: Number(keys.has("KeyD")) - Number(keys.has("KeyA")),
           yaw: camera.rotation.y,
           walk: keys.has("ShiftLeft") || keys.has("ShiftRight"),
           crouch: keys.has("ControlLeft") || keys.has("ControlRight"),
           jump: jumpPressed,
-        });
+        };
+        if (connection) {
+          connection.send(intent);
+          jumpPressed = false;
+          elapsed -= movement.tick;
+          continue;
+        }
+        player = advancePlayer(player, intent);
         camera.position.set(
           player.x,
           player.y +
@@ -372,6 +412,54 @@ export function startRange(
         elapsed -= movement.tick;
       }
     }
+    if (room && authoritative) {
+      const local = authoritative.players.find((p) => p.id === room.sessionId);
+      if (local) {
+        const p = local.player;
+        camera.position.set(
+          p.x,
+          p.y + (p.crouched ? movement.crouchEyeHeight : range.eyeHeight),
+          p.z,
+        );
+      }
+      for (const entry of authoritative.players) {
+        if (entry.id === room.sessionId) continue;
+        let mesh = remoteMeshes.get(entry.id);
+        if (!mesh) {
+          mesh = box(
+            "remote player",
+            entry.player.x,
+            entry.player.y + 0.9,
+            entry.player.z,
+            0.6,
+            1.8,
+            0.6,
+            remoteMaterial,
+          );
+          remoteMeshes.set(entry.id, mesh);
+        }
+        const height = entry.player.crouched ? 1.1 : 1.8;
+        mesh.scaling.y = height / 1.8;
+        mesh.position.copyFrom(
+          Vector3.Lerp(
+            mesh.position,
+            new Vector3(
+              entry.player.x,
+              entry.player.y + height / 2,
+              entry.player.z,
+            ),
+            Math.min(1, engine.getDeltaTime() / 50),
+          ),
+        );
+        mesh.rotation.y = entry.yaw;
+      }
+      for (const [id, mesh] of remoteMeshes) {
+        if (!authoritative.players.some((p) => p.id === id)) {
+          mesh.dispose();
+          remoteMeshes.delete(id);
+        }
+      }
+    }
     flash.setEnabled(tick - lastShot < 3);
     slide.position.z = 0.51 - Math.max(0, 1 - (tick - lastShot) / 7) * 0.05;
     const rifle = loadout.active === "rifle";
@@ -392,6 +480,7 @@ export function startRange(
     }
   });
   return () => {
+    connection?.dispose();
     events.abort();
     if (active()) document.exitPointerLock();
     scene.dispose();

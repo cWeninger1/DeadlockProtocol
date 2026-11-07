@@ -10,3 +10,5 @@ Shared weapon rules use simulation tick deadlines for firing and reloading. The 
 The serializable loadout stores ammunition and deadlines per weapon plus the active weapon ID and equip deadline. Shared loadout transitions enforce equip timing, firing mode and reload cancellation. The client clears held fire on blur and pointer release. Rifle recoil currently lives in the local camera controller and must move into shared aim simulation before authoritative multiplayer combat.
 
 Health and hazard timing are pure shared rules. Hazard and target reset deadlines advance on the simulation clock, so pausing freezes them. Death blocks input and simulation before any further weapon actions. Respawn disposes the current Babylon session and creates a fresh session through the React lifecycle.
+
+The initial network slice adds a separate movement room entry point. Shared protocol types and input validation live in packages/protocol. Colyseus owns player positions, simulation timing and room membership. The same Babylon range geometry renders both modes. React owns joining and leaving, reports errors and disposes the connection when navigating away.

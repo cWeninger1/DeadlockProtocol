@@ -1,6 +1,7 @@
+import { MovementRoom } from "./rooms/MovementRoom";
 import { Server, Room, createRouter, createEndpoint } from "@colyseus/core";
 import { WebSocketTransport } from "@colyseus/ws-transport";
-import { FOUNDATION_ROOM } from "@dp/protocol";
+import { FOUNDATION_ROOM, MOVEMENT_ROOM } from "@dp/protocol";
 
 class FoundationRoom extends Room {
   maxClients = 2;
@@ -12,4 +13,5 @@ server.router = createRouter({
   })),
 });
 server.define(FOUNDATION_ROOM, FoundationRoom);
+server.define(MOVEMENT_ROOM, MovementRoom);
 await server.listen(Number(process.env.PORT ?? 2567), "127.0.0.1");

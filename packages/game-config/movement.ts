@@ -12,8 +12,8 @@ export function spawnPlayer() {
     crouched: false,
   };
 }
-type Player = ReturnType<typeof spawnPlayer>;
-type Intent = {
+export type Player = ReturnType<typeof spawnPlayer>;
+export type Intent = {
   forward: number;
   right: number;
   yaw: number;

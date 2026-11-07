@@ -1,3 +1,8 @@
+import {
+  joinMovement,
+  type MovementRoom,
+  type NetworkStatus,
+} from "./networking/movement";
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { barriers } from "@dp/game-config";
@@ -7,7 +12,18 @@ import "./style.css";
 
 configureFirebase();
 
-function Range({ leave }: { leave: () => void }) {
+function Range({
+  leave,
+  multiplayer,
+}: {
+  leave: () => void;
+  multiplayer: boolean;
+}) {
+  const [networkStatus, setNetworkStatus] = useState<NetworkStatus>({
+    text: "Connecting",
+    connected: false,
+    players: 0,
+  });
   const [life, setLife] = useState(0);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [hud, setHud] = useState<RangeHud>();
@@ -19,15 +35,39 @@ function Range({ leave }: { leave: () => void }) {
     setReady(false);
     let cancelled = false;
     let dispose: (() => void) | undefined;
+    let joined: MovementRoom | undefined;
     import("./range")
-      .then(({ startRange }) => {
+      .then(async ({ startRange }) => {
+        if (cancelled) return;
+        if (multiplayer) {
+          joined = await joinMovement();
+          if (cancelled) {
+            await joined.leave();
+            return;
+          }
+        }
         if (!cancelled && canvas.current)
-          dispose = startRange(canvas.current, () => setReady(true), setHud);
+          dispose = startRange(
+            canvas.current,
+            () => setReady(true),
+            setHud,
+            joined,
+            setNetworkStatus,
+          );
       })
       .catch(() => {
+        if (joined && !dispose) void joined.leave().catch(() => {});
+        if (!cancelled && multiplayer)
+          setNetworkStatus({
+            text: "Connection failed",
+            connected: false,
+            players: 0,
+          });
         if (!cancelled)
           setError(
-            "Could not open the range. Enable WebGL or try a desktop browser.",
+            multiplayer
+              ? "Could not join Foundry. Check that the game server is running and return to the menu to retry."
+              : "Could not open the range. Enable WebGL or try a desktop browser.",
           );
       });
     const changed = () =>
@@ -38,7 +78,7 @@ function Range({ leave }: { leave: () => void }) {
       document.removeEventListener("pointerlockchange", changed);
       dispose?.();
     };
-  }, [life]);
+  }, [life, multiplayer]);
   async function takeControl() {
     try {
       await canvas.current?.requestPointerLock();
@@ -48,13 +88,20 @@ function Range({ leave }: { leave: () => void }) {
   }
   return (
     <main>
+      {multiplayer && (
+        <aside className="network-status" role="status">
+          {networkStatus.text}
+          <br />
+          Movement room
+        </aside>
+      )}
       <canvas ref={canvas} aria-label="Foundry 3D range" />
       {locked && !dead ? (
         <>
           <span className="reticle" aria-hidden="true">
             +
           </span>
-          {hud && (
+          {hud && !multiplayer && (
             <aside className="weapon-hud" aria-label="Range results">
               <strong
                 className={hud.health < 100 ? "damaged" : ""}
@@ -93,8 +140,15 @@ function Range({ leave }: { leave: () => void }) {
         </>
       ) : (
         <section className="pause">
-          <small>FOUNDRY / LOCAL RANGE</small>
+          <small>
+            {multiplayer ? "FOUNDRY / MOVEMENT ROOM" : "FOUNDRY / LOCAL RANGE"}
+          </small>
           <h2>{dead ? "You died" : ready ? "Range ready" : "Opening range"}</h2>
+          {multiplayer && (
+            <p>
+              Two-player movement test. Combat is available in the local range.
+            </p>
+          )}
           <p>
             {error ||
               "WASD to move · Shift to walk / Ctrl to crouch / Space to jump / Mouse to aim / 1 rifle / 2 pistol / Left click to fire / R to reload · Esc to release"}
@@ -112,7 +166,9 @@ function Range({ leave }: { leave: () => void }) {
               </button>
             </>
           )}
-          {ready && !dead && <button onClick={takeControl}>Resume</button>}{" "}
+          {ready && !dead && (!multiplayer || networkStatus.connected) && (
+            <button onClick={takeControl}>Resume</button>
+          )}{" "}
           <button className="secondary" onClick={leave}>
             Main menu
           </button>
@@ -124,7 +180,9 @@ function Range({ leave }: { leave: () => void }) {
 
 function App() {
   const [playing, setPlaying] = useState(false);
-  if (playing) return <Range leave={() => setPlaying(false)} />;
+  const [multiplayer, setMultiplayer] = useState(false);
+  if (playing)
+    return <Range multiplayer={multiplayer} leave={() => setPlaying(false)} />;
   return (
     <main className="menu">
       <header>
@@ -138,7 +196,23 @@ function App() {
             Foundry<span>.</span>
           </h1>
           <p>Explore the industrial test range in first person.</p>
-          <button onClick={() => setPlaying(true)}>Enter range &nbsp; →</button>
+          <button
+            onClick={() => {
+              setMultiplayer(false);
+              setPlaying(true);
+            }}
+          >
+            Enter range &nbsp; →
+          </button>
+          <button
+            className="secondary"
+            onClick={() => {
+              setMultiplayer(true);
+              setPlaying(true);
+            }}
+          >
+            Join movement room
+          </button>
         </div>
         <figure>
           <svg

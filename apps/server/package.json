@@ -10,6 +10,7 @@
     "@colyseus/core": "^0.18.27",
     "@colyseus/ws-transport": "^0.18.4",
     "@dp/protocol": "*",
-    "tsx": "^4.19.0"
+    "tsx": "^4.19.0",
+    "@dp/game-config": "*"
   }
 }
