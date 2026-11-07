@@ -66,6 +66,9 @@ test("fires one round per press, registers a plate hit, and reloads", async ({
   await page.goto("/");
   await page.getByRole("button", { name: "Enter range" }).click();
   await page.getByRole("button", { name: "Resume" }).click();
+  await expect
+    .poll(() => page.evaluate(() => document.pointerLockElement?.tagName))
+    .toBe("CANVAS");
   const ammo = page.getByLabel("Ammunition");
   await expect(ammo).toHaveText("12 / 48");
   await page.mouse.down();
@@ -93,6 +96,9 @@ test("switches weapons, fires a rifle burst, preserves ammunition and clears hel
   await page.goto("/");
   await page.getByRole("button", { name: "Enter range" }).click();
   await page.getByRole("button", { name: "Resume" }).click();
+  await expect
+    .poll(() => page.evaluate(() => document.pointerLockElement?.tagName))
+    .toBe("CANVAS");
   const ammo = page.getByLabel("Ammunition");
   await page.keyboard.press("1");
   await expect(page.getByText("AR30 Rifle", { exact: true })).toBeVisible();
@@ -124,8 +130,71 @@ test("switches weapons, fires a rifle burst, preserves ammunition and clears hel
   await page.evaluate(() => document.exitPointerLock());
   await page.mouse.up();
   await page.getByRole("button", { name: "Resume" }).click();
+  await expect
+    .poll(() => page.evaluate(() => document.pointerLockElement?.tagName))
+    .toBe("CANVAS");
   await expect(page.getByText("Ready", { exact: true })).toBeVisible();
   const resumed = await ammo.innerText();
   await page.waitForTimeout(300);
   await expect(ammo).toHaveText(resumed);
+});
+
+test("destroys a target and lets it reset", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Enter range" }).click();
+  await page.getByRole("button", { name: "Resume" }).click();
+  await expect
+    .poll(() => page.evaluate(() => document.pointerLockElement?.tagName))
+    .toBe("CANVAS");
+  for (let hit = 1; hit <= 4; hit++) {
+    await page.mouse.down();
+    await page.mouse.up();
+    await expect(
+      page.getByText("Target hits: " + hit, { exact: true }),
+    ).toBeVisible();
+    await page.waitForTimeout(220);
+  }
+  await expect(page.getByLabel("Target health")).toHaveText(
+    "Target down - resetting",
+  );
+  await page.mouse.down();
+  await page.mouse.up();
+  await expect(page.getByLabel("Ammunition")).toHaveText("7 / 48");
+  await expect(page.getByText("Target hits: 4", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Target health")).toHaveText("Target HP 100");
+});
+test("takes damage, dies, blocks play while dead and respawns with fresh ammunition", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/");
+  await page.getByRole("button", { name: "Enter range" }).click();
+  await page.getByRole("button", { name: "Resume" }).click();
+  await expect
+    .poll(() => page.evaluate(() => document.pointerLockElement?.tagName))
+    .toBe("CANVAS");
+  await page.mouse.down();
+  await page.mouse.up();
+  await expect(page.getByLabel("Ammunition")).toHaveText("11 / 48");
+  await page.keyboard.down("a");
+  await expect(page.getByLabel("Health", { exact: true })).toHaveText("HP 75");
+  await page.keyboard.up("a");
+  await expect(page.getByRole("heading", { name: "You died" })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => document.pointerLockElement === null))
+    .toBe(true);
+  await page.keyboard.press("1");
+  await page.keyboard.press("r");
+  await expect(
+    page.getByRole("button", { name: "Resume", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Respawn" }).click();
+  await page.getByRole("button", { name: "Resume", exact: true }).click();
+  await expect(page.getByLabel("Health", { exact: true })).toHaveText("HP 100");
+  await expect(page.getByLabel("Ammunition")).toHaveText("12 / 48");
+  await page.mouse.down();
+  await page.mouse.up();
+  await expect(page.getByText("Target hits: 1", { exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
 });

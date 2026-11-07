@@ -8,12 +8,15 @@ import "./style.css";
 configureFirebase();
 
 function Range({ leave }: { leave: () => void }) {
+  const [life, setLife] = useState(0);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [hud, setHud] = useState<RangeHud>();
   const [ready, setReady] = useState(false);
   const [locked, setLocked] = useState(false);
   const [error, setError] = useState("");
+  const dead = hud?.health === 0;
   useEffect(() => {
+    setReady(false);
     let cancelled = false;
     let dispose: (() => void) | undefined;
     import("./range")
@@ -35,7 +38,7 @@ function Range({ leave }: { leave: () => void }) {
       document.removeEventListener("pointerlockchange", changed);
       dispose?.();
     };
-  }, []);
+  }, [life]);
   async function takeControl() {
     try {
       await canvas.current?.requestPointerLock();
@@ -46,13 +49,24 @@ function Range({ leave }: { leave: () => void }) {
   return (
     <main>
       <canvas ref={canvas} aria-label="Foundry 3D range" />
-      {locked ? (
+      {locked && !dead ? (
         <>
           <span className="reticle" aria-hidden="true">
             +
           </span>
           {hud && (
             <aside className="weapon-hud" aria-label="Range results">
+              <strong
+                className={hud.health < 100 ? "damaged" : ""}
+                aria-label="Health"
+              >
+                HP {hud.health}
+              </strong>
+              <span>
+                {hud.inHazard
+                  ? "HAZARD - leave the striped area"
+                  : "Damage test area: left of spawn"}
+              </span>
               <small>{hud.weaponName}</small>
               <strong aria-label="Ammunition">
                 {hud.magazine} / {hud.reserve}
@@ -69,18 +83,36 @@ function Range({ leave }: { leave: () => void }) {
                       : "Ready"}
               </span>
               <span>Target hits: {hud.hits}</span>
+              <span aria-label="Target health">
+                {hud.targetHealth === 0
+                  ? "Target down - resetting"
+                  : "Target HP " + hud.targetHealth}
+              </span>
             </aside>
           )}
         </>
       ) : (
         <section className="pause">
           <small>FOUNDRY / LOCAL RANGE</small>
-          <h2>{ready ? "Range ready" : "Opening range"}</h2>
+          <h2>{dead ? "You died" : ready ? "Range ready" : "Opening range"}</h2>
           <p>
             {error ||
               "WASD to move · Shift to walk / Ctrl to crouch / Space to jump / Mouse to aim / 1 rifle / 2 pistol / Left click to fire / R to reload · Esc to release"}
           </p>
-          {ready && <button onClick={takeControl}>Resume</button>}{" "}
+          {dead && (
+            <>
+              <p>The marked hazard area depleted your health.</p>
+              <button
+                onClick={() => {
+                  setHud(undefined);
+                  setLife(life + 1);
+                }}
+              >
+                Respawn
+              </button>
+            </>
+          )}
+          {ready && !dead && <button onClick={takeControl}>Resume</button>}{" "}
           <button className="secondary" onClick={leave}>
             Main menu
           </button>

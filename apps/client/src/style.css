@@ -151,3 +151,7 @@ canvas {
 .weapon-hud strong {
   font-size: 26px;
 }
+
+.damaged {
+  color: #ff8875;
+}

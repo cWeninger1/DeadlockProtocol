@@ -16,3 +16,5 @@ Open http://127.0.0.1:5173, select **Enter range**, then **Resume** to capture t
 For separate terminals use `npm run dev -w @dp/client` and `npm run dev -w @dp/server`. The local range works without Firebase credentials. To initialize your Firebase web app, copy `apps/client/.env.example` to `apps/client/.env.local`, fill in its four web configuration values and restart Vite.
 
 See [testing](docs/TESTING.md), [roadmap](docs/ROADMAP.md) and [architecture](docs/ARCHITECTURE.md).
+
+For the damage test, hold A from spawn until you reach the red striped floor on your left. The HUD shows falling health. The death screen provides Respawn, followed by Resume to capture the mouse again.

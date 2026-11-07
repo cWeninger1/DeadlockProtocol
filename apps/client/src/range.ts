@@ -8,6 +8,11 @@ import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import {
+  createVitals,
+  applyHazard,
+  healthRules,
+  hazard,
+  damageHealth,
   createLoadout,
   advanceLoadout,
   switchWeapon,
@@ -22,6 +27,9 @@ import {
 } from "@dp/game-config";
 
 export type RangeHud = {
+  health: number;
+  targetHealth: number;
+  inHazard: boolean;
   weaponName: string;
   equipping: boolean;
   magazine: number;
@@ -101,6 +109,23 @@ export function startRange(
         ochre,
       );
   }
+  const danger = material("hazard red", "#c64128");
+  box(
+    "hazard floor",
+    hazard.x,
+    0.018,
+    hazard.z,
+    hazard.width,
+    0.03,
+    hazard.depth,
+    danger,
+  );
+  for (
+    let z = hazard.z - hazard.depth / 2;
+    z <= hazard.z + hazard.depth / 2;
+    z += 0.5
+  )
+    box("hazard stripe", hazard.x, 0.038, z, hazard.width, 0.01, 0.09, ochre);
   // Bolt the plate onto the front face of the far freight barrier.
   const plate = box("target plate", 0, 1.45, 10.91, 1.12, 1.05, 0.12, ochre);
   const center = box("aiming square", 0, 1.65, 10.84, 0.46, 0.46, 0.04, steel);
@@ -141,6 +166,10 @@ export function startRange(
   barrel.isPickable = magazine.isPickable = false;
   barrel.setEnabled(false);
   magazine.setEnabled(false);
+  let vitals = createVitals();
+  let targetHealth: number = healthRules.max;
+  let targetReturnsAt = 0;
+  let inHazard = false;
   let loadout = createLoadout();
   let selected: WeaponId | null = null;
   let fireHeld = false;
@@ -155,6 +184,9 @@ export function startRange(
     reloadPressed = false;
   const reportHud = () =>
     onHud({
+      health: vitals.health,
+      targetHealth,
+      inHazard,
       weaponName: weapons[loadout.active].name,
       equipping: tick < loadout.readyAt,
       magazine: loadout.inventory[loadout.active].magazine,
@@ -191,7 +223,8 @@ export function startRange(
   }
   const events = new AbortController();
   const options = { signal: events.signal };
-  const active = () => document.pointerLockElement === canvas;
+  const active = () =>
+    document.pointerLockElement === canvas && vitals.health > 0;
   document.addEventListener(
     "mousedown",
     (e) => {
@@ -255,6 +288,26 @@ export function startRange(
           player.z,
         );
         tick++;
+        const oldVitals = vitals;
+        const oldHazard = inHazard;
+        inHazard =
+          Math.abs(player.x - hazard.x) <= hazard.width / 2 &&
+          Math.abs(player.z - hazard.z) <= hazard.depth / 2 &&
+          player.y <= 0.1;
+        vitals = applyHazard(vitals, player, tick);
+        if (vitals !== oldVitals || inHazard !== oldHazard) reportHud();
+        if (vitals.health === 0) {
+          clearInput();
+          slide.setEnabled(false);
+          document.exitPointerLock();
+          break;
+        }
+        if (targetHealth === 0 && tick >= targetReturnsAt) {
+          targetHealth = healthRules.max;
+          plate.setEnabled(true);
+          center.setEnabled(true);
+          reportHud();
+        }
         if (selected) {
           const next = switchWeapon(loadout, selected, tick);
           if (next !== loadout) {
@@ -288,6 +341,15 @@ export function startRange(
             camera.getForwardRay(weapons[loadout.active].range),
           );
           if (hit?.pickedMesh === plate || hit?.pickedMesh === center) {
+            targetHealth = damageHealth(
+              targetHealth,
+              weapons[loadout.active].damage,
+            );
+            if (targetHealth === 0) {
+              targetReturnsAt = tick + healthRules.targetRespawnTicks;
+              plate.setEnabled(false);
+              center.setEnabled(false);
+            }
             hits++;
             lastHit = tick;
           }

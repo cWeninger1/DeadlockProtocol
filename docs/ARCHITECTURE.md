@@ -8,3 +8,5 @@ The controller advances serializable player state at 60 Hz. Babylon samples inpu
 Shared weapon rules use simulation tick deadlines for firing and reloading. The local range casts a ray from the camera and scores the nearest pickable surface only when it belongs to the target. React receives ammunition and hit updates on weapon transitions. Phase 3 will resolve multiplayer shots on the server.
 
 The serializable loadout stores ammunition and deadlines per weapon plus the active weapon ID and equip deadline. Shared loadout transitions enforce equip timing, firing mode and reload cancellation. The client clears held fire on blur and pointer release. Rifle recoil currently lives in the local camera controller and must move into shared aim simulation before authoritative multiplayer combat.
+
+Health and hazard timing are pure shared rules. Hazard and target reset deadlines advance on the simulation clock, so pausing freezes them. Death blocks input and simulation before any further weapon actions. Respawn disposes the current Babylon session and creates a fresh session through the React lifecycle.
