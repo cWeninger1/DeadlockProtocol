@@ -43,10 +43,12 @@ test("two browser sessions see movement and remove a departing player", async ({
   second.on("pageerror", (e) => errors.push(e.message));
   try {
     await first.goto("http://127.0.0.1:5174");
-    await first.getByRole("button", { name: "Join movement room" }).click();
+    await first.getByRole("button", { name: "Join multiplayer range" }).click();
     await expect(first.getByRole("status")).toContainText("Players 1/2");
     await second.goto("http://127.0.0.1:5174");
-    await second.getByRole("button", { name: "Join movement room" }).click();
+    await second
+      .getByRole("button", { name: "Join multiplayer range" })
+      .click();
     await expect(first.getByRole("status")).toContainText("Players 2/2");
     await expect(second.getByRole("status")).toContainText("Players 2/2");
     const before = await first.locator("canvas").screenshot();
@@ -77,14 +79,14 @@ test("two browser sessions see movement and remove a departing player", async ({
 test("a failed join shows a retry path through the menu", async ({ page }) => {
   await page.route("**/matchmake/**", (route) => route.abort());
   await page.goto("/");
-  await page.getByRole("button", { name: "Join movement room" }).click();
+  await page.getByRole("button", { name: "Join multiplayer range" }).click();
   await expect(page.getByText(/Could not join Foundry/)).toBeVisible({
     timeout: 15000,
   });
   await expect(page.getByRole("button", { name: "Resume" })).toHaveCount(0);
   await page.getByRole("button", { name: "Main menu" }).click();
   await expect(
-    page.getByRole("button", { name: "Join movement room" }),
+    page.getByRole("button", { name: "Join multiplayer range" }),
   ).toBeVisible();
 });
 
@@ -114,7 +116,7 @@ test("renders continuous predicted movement with delayed WebSocket traffic", asy
     });
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "Join movement room" }).click();
+  await page.getByRole("button", { name: "Join multiplayer range" }).click();
   await expect(page.getByRole("status")).toContainText("Players 1/2");
   await page.getByRole("button", { name: "Resume" }).click();
   await expect
@@ -212,7 +214,7 @@ test("jumping in changing directions stays smooth when movement messages arrive 
     });
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "Join movement room" }).click();
+  await page.getByRole("button", { name: "Join multiplayer range" }).click();
   await expect(page.getByRole("status")).toContainText("Players 1/2");
   await page.getByRole("button", { name: "Resume" }).click();
   await expect
@@ -256,4 +258,176 @@ test("jumping in changing directions stays smooth when movement messages arrive 
   expect(points.at(-1)!.y).toBeCloseTo(1.7, 1);
   await page.evaluate(() => document.exitPointerLock());
   await page.getByRole("button", { name: "Main menu" }).click();
+});
+
+test("server owns combat, cooldowns, deaths and same-session respawns", async () => {
+  const client = new Client("http://127.0.0.1:2568");
+  const a = await client.joinOrCreate(MOVEMENT_ROOM);
+  const b = await client.joinOrCreate(MOVEMENT_ROOM);
+  let latest: Snapshot | undefined;
+  a.onMessage<Snapshot>("snapshot", (s) => {
+    latest = s;
+  });
+  b.onMessage<Snapshot>("snapshot", () => {});
+  const own = () => latest!.players.find((p) => p.id === a.sessionId)!;
+  const enemy = () => latest!.players.find((p) => p.id === b.sessionId)!;
+  let sequence = 0;
+  const fire = (extra = {}) =>
+    a.send("input", {
+      ...idleInput,
+      sequence: ++sequence,
+      combat: {
+        pitch: 0,
+        pressed: true,
+        held: false,
+        reload: false,
+        weapon: null,
+        life: 0,
+        ...extra,
+      },
+    });
+  try {
+    await expect.poll(() => latest?.players.length).toBe(2);
+    expect(own().combat!.team).not.toBe(enemy().combat!.team);
+    a.send("respawn");
+    fire({ damage: 1000 });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(own().combat!.life).toBe(0);
+    expect(enemy().combat!.health).toBe(100);
+    for (let i = 0; i < 6; i++) fire();
+    await expect.poll(() => own().sequence).toBe(sequence);
+    expect(own().combat!.shots).toBe(1);
+    expect(enemy().combat!.health).toBe(75);
+    for (let i = 0; i < 3; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 220));
+      fire();
+      await expect.poll(() => own().combat!.shots).toBe(i + 2);
+    }
+    await expect.poll(() => enemy().combat!.health).toBe(0);
+    expect(own().combat!.kills).toBe(1);
+    expect(enemy().combat!.deaths).toBe(1);
+    const deadPosition = enemy().player;
+    b.send("input", {
+      ...idleInput,
+      forward: 1,
+      sequence: 1,
+      combat: {
+        pitch: 0,
+        pressed: true,
+        held: true,
+        reload: false,
+        weapon: "rifle",
+        life: 0,
+      },
+    });
+    await expect.poll(() => enemy().sequence).toBe(1);
+    expect(enemy().player).toEqual(deadPosition);
+    expect(enemy().combat!.shots).toBe(0);
+    await expect
+      .poll(() => latest!.tick - enemy().combat!.diedAt)
+      .toBeGreaterThanOrEqual(60);
+    b.send("respawn");
+    await expect.poll(() => enemy().combat!.life).toBe(1);
+    expect(enemy().combat!.health).toBe(100);
+    expect(enemy().combat!.deaths).toBe(1);
+    b.send("respawn");
+    b.send("input", {
+      ...idleInput,
+      forward: 1,
+      sequence: 2,
+      combat: {
+        pitch: 0,
+        pressed: true,
+        held: true,
+        reload: false,
+        weapon: null,
+        life: 0,
+      },
+    });
+    await expect.poll(() => enemy().sequence).toBe(2);
+    expect(enemy().combat!.life).toBe(1);
+    expect(enemy().combat!.shots).toBe(0);
+    expect(enemy().player.z).toBe(-12);
+    fire({ pressed: false, reload: true });
+    await expect
+      .poll(() => own().combat!.loadout.inventory.pistol.reloadEnds)
+      .not.toBeNull();
+    await expect
+      .poll(() => own().combat!.loadout.inventory.pistol.magazine)
+      .toBe(12);
+    expect(own().combat!.loadout.inventory.pistol.reserve).toBe(44);
+    fire({ pressed: false, weapon: "rifle" });
+    await expect.poll(() => own().combat!.loadout.active).toBe("rifle");
+    await expect
+      .poll(() => latest!.tick >= own().combat!.loadout.readyAt)
+      .toBe(true);
+    fire({ pressed: false, held: true });
+    await expect
+      .poll(() => own().combat!.loadout.inventory.rifle.magazine)
+      .toBe(29);
+    expect(own().combat!.recoil).toBeGreaterThan(0);
+  } finally {
+    await a.leave();
+    await b.leave();
+  }
+});
+
+test("two browser players shoot, die and respawn without leaving the room", async ({
+  browser,
+}) => {
+  const a = await browser.newContext(),
+    b = await browser.newContext();
+  const first = await a.newPage(),
+    second = await b.newPage();
+  const errors: string[] = [];
+  first.on("pageerror", (e) => errors.push(e.message));
+  second.on("pageerror", (e) => errors.push(e.message));
+  try {
+    await first.goto("http://127.0.0.1:5174");
+    await first.getByRole("button", { name: "Join multiplayer range" }).click();
+    await expect(first.getByRole("status")).toContainText("Players 1/2");
+    await second.goto("http://127.0.0.1:5174");
+    await second
+      .getByRole("button", { name: "Join multiplayer range" })
+      .click();
+    await expect(second.getByRole("status")).toContainText("Players 2/2");
+    await first.bringToFront();
+    await first.getByRole("button", { name: "Resume" }).click();
+    await expect(first.getByLabel("Health", { exact: true })).toHaveText(
+      "HP 100",
+    );
+    for (let i = 0; i < 4; i++) {
+      await first.mouse.down();
+      await first.waitForTimeout(30);
+      await first.mouse.up();
+      await expect(first.getByLabel("Ammunition")).toHaveText(11 - i + " / 48");
+      await first.waitForTimeout(220);
+    }
+    await expect(
+      second.getByRole("heading", { name: "You died" }),
+    ).toBeVisible();
+    await expect(first.getByText("Kills 1 / Deaths 0")).toBeVisible();
+    await first.evaluate(() => document.exitPointerLock());
+    await second.bringToFront();
+    await second.getByRole("button", { name: "Respawn" }).click();
+    await expect(
+      second.getByRole("heading", { name: "Range ready" }),
+    ).toBeVisible();
+    await expect(second.getByRole("status")).toContainText("Players 2/2");
+    await second.getByRole("button", { name: "Resume" }).click();
+    await expect(second.getByLabel("Health", { exact: true })).toHaveText(
+      "HP 100",
+    );
+    await second.keyboard.press("1");
+    await expect(second.getByText("AR30 Rifle", { exact: true })).toBeVisible();
+    await expect(second.getByText("Ready", { exact: true })).toBeVisible();
+    await second.mouse.down();
+    await second.waitForTimeout(250);
+    await second.mouse.up();
+    await expect(second.getByLabel("Ammunition")).not.toHaveText("30 / 90");
+    expect(errors).toEqual([]);
+  } finally {
+    await a.close();
+    await b.close();
+  }
 });

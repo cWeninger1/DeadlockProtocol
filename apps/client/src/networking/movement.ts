@@ -1,6 +1,11 @@
 import { Client, type Room } from "@colyseus/sdk";
 import type { Intent } from "@dp/game-config";
-import { MOVEMENT_ROOM, type Snapshot, type InputMessage } from "@dp/protocol";
+import {
+  MOVEMENT_ROOM,
+  type Snapshot,
+  type InputMessage,
+  type CombatInput,
+} from "@dp/protocol";
 
 export async function joinMovement() {
   const url = import.meta.env.VITE_GAME_SERVER_URL || "http://127.0.0.1:2567";
@@ -52,10 +57,11 @@ export function connectMovement(
     if (Date.now() - received > 5000) disconnect();
   }, 1000);
   return {
-    send(input: Intent) {
+    send(input: Intent, combat?: CombatInput) {
       if (!connected || disposed) return;
       const command: InputMessage = {
         ...input,
+        ...(combat ? { combat } : {}),
         yaw: Math.atan2(Math.sin(input.yaw), Math.cos(input.yaw)),
         sequence: ++sequence,
       };

@@ -5,3 +5,5 @@ Run npm run format:check, npm run lint, npm run typecheck, npm test and npm run 
 Networking tests run two isolated browser contexts against the real local Colyseus server, observe remote movement and departure, and exercise forged input, message bursts, stale input expiry and failed joins. Integration files run with one worker so room membership assertions remain isolated.
 
 The prediction tests replay delayed and varied snapshot delivery. A Chrome regression test delays real WebSocket messages by 100 ms each direction and samples the active Babylon camera over 60 rendered frames, checking for movement plateaus and abrupt position jumps.
+
+Combat unit tests cover nearest hits, range, aim, crouching, cover occlusion and malformed intent. Real-server tests cover fire-rate limits, ammo/reload/switch transitions, elimination, dead-player lockout, same-session respawn and rejection of prior-life commands. A two-browser gameplay test fires the pistol to eliminate the other player, verifies the score, respawns and fires the rifle. These are local Chrome checks; cross-machine internet play and high-latency combat feel remain unverified.

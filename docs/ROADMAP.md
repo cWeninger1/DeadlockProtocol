@@ -40,10 +40,10 @@ Deliverable: A functional single-player FPS sandbox.
 - [x] Add multiple connected players.
 - [x] Implement authoritative movement.
 - [x] Implement prediction and reconciliation.
-- [ ] Synchronize weapon actions.
-- [ ] Add server-authoritative damage.
-- [ ] Add deaths and respawning.
-- [ ] Add team assignment.
+- [x] Synchronize weapon actions.
+- [x] Add server-authoritative damage.
+- [x] Add deaths and respawning.
+- [x] Add team assignment.
 
 Deliverable: Two or more players can fight in the browser over a network.
 
@@ -133,3 +133,7 @@ Deliverable: A browser-accessible multiplayer game.
 - Fixed jump stutter caused by dropped commands in frame/network bursts and server timer drift. Reproduced a six-command burst where the server acknowledged only four and dropped the jump, then verified all six are simulated. Removed the per-callback message cutoff in favor of the existing bounded queue and per-second limit. Added bounded fixed-step catch-up for delayed server callbacks. Repeated the directional-jump browser test with messages batched every 100 ms and checked camera vertical velocity.
 
 - Jump-stutter verification passed after both fixes: 18 unit tests, 13 browser/integration tests, formatting, lint, strict TypeScript and production build. The directional jump test also passed three consecutive runs after correcting server timer drift. Existing bundle-size warning remains.
+
+- Phase 3 combat slice complete. The two-player room assigns Attackers/Defenders and owns weapon switches, firing cadence, ammunition, reloading, recoil, cover-aware body hits, health, kills, deaths and a one-second respawn gate. Respawn preserves the room/session and score; life IDs reject delayed commands from a prior life. The client displays authoritative weapon state and team/score HUD, plus remote weapons and muzzle flashes.
+- Verified 21 unit tests and all 15 Chrome browser/integration tests, including two real browser players shooting, dying and respawning; forged combat fields, burst fire limits, dead-player lockout, stale-life input, reloads and weapon switching; existing delayed/batched movement and jumping regressions. Formatting, lint, strict TypeScript and production build pass. Combat currently uses simple body boxes without armor, hit regions or lag compensation. Internet/cross-machine combat, high-latency weapon feel and production hosting remain unverified. The existing Babylon bundle-size warning remains.
+- Next slice: Phase 4 round states and timed round resets. Competitive objectives, scoring rules and spectator mode remain outstanding; free respawning currently belongs to this combat test room.

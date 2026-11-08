@@ -16,6 +16,8 @@ import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import {
+  combatRules,
+  type CombatState,
   createVitals,
   applyHazard,
   healthRules,
@@ -36,6 +38,10 @@ import {
 
 export type RangeHud = {
   health: number;
+  team?: string;
+  kills: number;
+  deaths: number;
+  respawnReady: boolean;
   targetHealth: number;
   inHazard: boolean;
   weaponName: string;
@@ -192,27 +198,43 @@ export function startRange(
     lastShot = -100;
   let firePressed = false,
     reloadPressed = false;
-  const reportHud = () =>
-    onHud({
+  let combat: CombatState | undefined;
+  let serverTick = 0;
+  let lastHud = "";
+  const reportHud = () => {
+    const hud: RangeHud = {
       health: vitals.health,
+      team: combat?.team,
+      kills: combat?.kills ?? 0,
+      deaths: combat?.deaths ?? 0,
+      respawnReady:
+        !combat || serverTick - combat.diedAt >= combatRules.respawnTicks,
       targetHealth,
       inHazard,
       weaponName: weapons[loadout.active].name,
-      equipping: tick < loadout.readyAt,
+      equipping: (room ? serverTick : tick) < loadout.readyAt,
       magazine: loadout.inventory[loadout.active].magazine,
       reserve: loadout.inventory[loadout.active].reserve,
       reloading: loadout.inventory[loadout.active].reloadEnds !== null,
       hits,
-    });
+    };
+    const serialized = JSON.stringify(hud);
+    if (serialized !== lastHud) {
+      lastHud = serialized;
+      onHud(hud);
+    }
+  };
   reportHud();
   let authoritative: Snapshot | undefined;
-  const prediction = new MovementPrediction();
+  let prediction = new MovementPrediction();
   const snapshotBuffer: { snapshot: Snapshot; time: number }[] = [];
   let previousPlayer = spawnPlayer();
   let eyeHeight: number = range.eyeHeight;
   let connected = true;
   const remoteMeshes = new Map<string, Mesh>();
-  const remoteMaterial = material("remote player", "#45c9b6");
+  const remoteMaterial = material("defender", "#45c9b6");
+  const attackerMaterial = material("attacker", "#dc8249");
+  const remoteGuns = new Map<string, { gun: Mesh; flash: Mesh }>();
   const connection = room
     ? connectMovement(
         room,
@@ -221,7 +243,37 @@ export function startRange(
           snapshotBuffer.push({ snapshot, time: performance.now() });
           if (snapshotBuffer.length > 20) snapshotBuffer.shift();
           const local = snapshot.players.find((p) => p.id === room?.sessionId);
-          if (local) prediction.reconcile(local, snapshot.tick);
+          if (local) {
+            if (local.combat) {
+              const next = local.combat;
+              const newLife = !combat || combat.life !== next.life;
+              const died = vitals.health > 0 && next.health === 0;
+              if (newLife || died) {
+                prediction = new MovementPrediction();
+                clearInput();
+              }
+              if (newLife) {
+                camera.rotation.set(0, local.yaw, 0);
+                recoil = 0;
+              }
+              camera.rotation.x = Math.max(
+                -1.48,
+                Math.min(1.48, camera.rotation.x + recoil - next.recoil),
+              );
+              recoil = next.recoil;
+              if (combat && next.shots > combat.shots) lastShot = tick;
+              combat = next;
+              serverTick = snapshot.tick;
+              loadout = next.loadout;
+              vitals = { ...vitals, health: next.health };
+              hits = next.hits;
+              slide.setEnabled(next.health > 0);
+              if (died && document.pointerLockElement === canvas)
+                document.exitPointerLock();
+              reportHud();
+            }
+            prediction.reconcile(local, snapshot.tick);
+          }
         },
         (status) => {
           connected = status.connected;
@@ -232,7 +284,6 @@ export function startRange(
       )
     : undefined;
   if (room) {
-    slide.setEnabled(false);
     plate.setEnabled(false);
     center.setEnabled(false);
   }
@@ -328,10 +379,20 @@ export function startRange(
               crouch: keys.has("ControlLeft") || keys.has("ControlRight"),
               jump: jumpPressed,
             }
-          : idleInput;
+          : { ...idleInput, yaw: camera.rotation.y };
         if (connection) {
-          const command = connection.send(intent);
-          if (command) prediction.step(command);
+          tick++;
+          const command = connection.send(intent, {
+            pitch: Math.max(-1.48, Math.min(1.48, camera.rotation.x + recoil)),
+            pressed: controlling && firePressed,
+            held: controlling && fireHeld,
+            reload: controlling && reloadPressed,
+            weapon: controlling ? selected : null,
+            life: combat?.life ?? 0,
+          });
+          if (command && vitals.health > 0) prediction.step(command);
+          firePressed = reloadPressed = false;
+          selected = null;
           jumpPressed = false;
           elapsed -= movement.tick;
           continue;
@@ -453,8 +514,47 @@ export function startRange(
             0.6,
             remoteMaterial,
           );
+          const gun = box(
+            "remote weapon",
+            0.25,
+            0.48,
+            0.38,
+            0.09,
+            0.1,
+            0.35,
+            steel,
+          );
+          gun.parent = mesh;
+          const muzzle = box(
+            "remote muzzle",
+            0,
+            0,
+            0.23,
+            0.1,
+            0.1,
+            0.12,
+            ochre,
+          );
+          muzzle.parent = gun;
+          remoteGuns.set(entry.id, { gun, flash: muzzle });
           remoteMeshes.set(entry.id, mesh);
         }
+        mesh.setEnabled(!entry.combat || entry.combat.health > 0);
+        mesh.material =
+          entry.combat?.team === "Attackers"
+            ? attackerMaterial
+            : remoteMaterial;
+        const remoteGun = remoteGuns.get(entry.id)!;
+        remoteGun.gun.scaling.z =
+          entry.combat?.loadout.active === "rifle" ? 1.8 : 1;
+        remoteGun.gun.rotation.x =
+          entry.combat?.loadout.inventory[entry.combat.loadout.active]
+            .reloadEnds != null
+            ? 0.6
+            : 0;
+        remoteGun.flash.setEnabled(
+          !!entry.combat && authoritative.tick - entry.combat.shotTick < 4,
+        );
         const a =
           older.snapshot.players.find((p) => p.id === entry.id) || entry;
         const b =
@@ -478,6 +578,7 @@ export function startRange(
         if (!authoritative.players.some((p) => p.id === id)) {
           mesh.dispose();
           remoteMeshes.delete(id);
+          remoteGuns.delete(id);
         }
       }
     }
@@ -506,7 +607,7 @@ export function startRange(
     flash.position.z = rifle ? 0.45 : 0.175;
     slide.rotation.x =
       loadout.inventory[loadout.active].reloadEnds !== null ||
-      tick < loadout.readyAt
+      (room ? serverTick : tick) < loadout.readyAt
         ? 0.55
         : 0;
     center.material = tick - lastHit < 10 ? ochre : steel;

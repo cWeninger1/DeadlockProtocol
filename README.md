@@ -1,6 +1,6 @@
 # Deadlock Protocol
 
-An original tactical FPS for desktop browsers. Phase 1 opens Foundry, a local 3D movement range.
+An original tactical FPS for desktop browsers. Foundry includes a local training range and a two-player combat room.
 
 ## Run locally
 
@@ -19,4 +19,4 @@ See [testing](docs/TESTING.md), [roadmap](docs/ROADMAP.md) and [architecture](do
 
 For the damage test, hold A from spawn until you reach the red striped floor on your left. The HUD shows falling health. The death screen provides Respawn, followed by Resume to capture the mouse again.
 
-To try multiplayer movement, start both services with npm run dev, open two browser tabs, and choose **Join movement room** in each. Teal bodies show the other player. This initial room supports movement. Local prediction and snapshot interpolation smooth movement. Networked combat is the next development slice. See docs/NETWORKING.md for endpoint configuration.
+To try multiplayer combat, start both services with npm run dev, open two browser windows, and choose **Join multiplayer range** in each. Orange bodies are Attackers; teal bodies are Defenders. Use **Resume**, aim and fire. Both weapons, ammunition, damage, kills and deaths are synchronized by the server. After elimination, **Respawn** unlocks after one second, then **Resume** captures the mouse again. Local prediction and snapshot interpolation smooth movement. The striped hazard is only active in local training. See docs/NETWORKING.md for endpoint configuration.

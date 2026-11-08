@@ -25,6 +25,7 @@ function Range({
     players: 0,
   });
   const [life, setLife] = useState(0);
+  const roomRef = useRef<MovementRoom | undefined>(undefined);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [hud, setHud] = useState<RangeHud>();
   const [ready, setReady] = useState(false);
@@ -41,6 +42,7 @@ function Range({
         if (cancelled) return;
         if (multiplayer) {
           joined = await joinMovement();
+          roomRef.current = joined;
           if (cancelled) {
             await joined.leave();
             return;
@@ -77,6 +79,7 @@ function Range({
       cancelled = true;
       document.removeEventListener("pointerlockchange", changed);
       dispose?.();
+      roomRef.current = undefined;
     };
   }, [life, multiplayer]);
   async function takeControl() {
@@ -92,7 +95,7 @@ function Range({
         <aside className="network-status" role="status">
           {networkStatus.text}
           <br />
-          Movement room
+          Multiplayer range
         </aside>
       )}
       <canvas ref={canvas} aria-label="Foundry 3D range" />
@@ -101,7 +104,7 @@ function Range({
           <span className="reticle" aria-hidden="true">
             +
           </span>
-          {hud && !multiplayer && (
+          {hud && (
             <aside className="weapon-hud" aria-label="Range results">
               <strong
                 className={hud.health < 100 ? "damaged" : ""}
@@ -110,9 +113,11 @@ function Range({
                 HP {hud.health}
               </strong>
               <span>
-                {hud.inHazard
-                  ? "HAZARD - leave the striped area"
-                  : "Damage test area: left of spawn"}
+                {multiplayer
+                  ? hud.team
+                  : hud.inHazard
+                    ? "HAZARD - leave the striped area"
+                    : "Damage test area: left of spawn"}
               </span>
               <small>{hud.weaponName}</small>
               <strong aria-label="Ammunition">
@@ -129,11 +134,16 @@ function Range({
                         : "Out of ammunition"
                       : "Ready"}
               </span>
-              <span>Target hits: {hud.hits}</span>
+              <span>
+                {multiplayer ? "Hits: " : "Target hits: "}
+                {hud.hits}
+              </span>
               <span aria-label="Target health">
-                {hud.targetHealth === 0
-                  ? "Target down - resetting"
-                  : "Target HP " + hud.targetHealth}
+                {multiplayer
+                  ? "Kills " + hud.kills + " / Deaths " + hud.deaths
+                  : hud.targetHealth === 0
+                    ? "Target down - resetting"
+                    : "Target HP " + hud.targetHealth}
               </span>
             </aside>
           )}
@@ -141,12 +151,15 @@ function Range({
       ) : (
         <section className="pause">
           <small>
-            {multiplayer ? "FOUNDRY / MOVEMENT ROOM" : "FOUNDRY / LOCAL RANGE"}
+            {multiplayer
+              ? "FOUNDRY / MULTIPLAYER RANGE"
+              : "FOUNDRY / LOCAL RANGE"}
           </small>
           <h2>{dead ? "You died" : ready ? "Range ready" : "Opening range"}</h2>
           {multiplayer && (
             <p>
-              Two-player movement test. Combat is available in the local range.
+              Two-player combat range. Join from a second browser to fight.
+              Orange: Attackers. Teal: Defenders.
             </p>
           )}
           <p>
@@ -155,9 +168,21 @@ function Range({
           </p>
           {dead && (
             <>
-              <p>The marked hazard area depleted your health.</p>
+              <p>
+                {multiplayer
+                  ? "You were eliminated. Respawn to rejoin the fight."
+                  : "The marked hazard area depleted your health."}
+              </p>
               <button
+                disabled={
+                  multiplayer &&
+                  (!hud?.respawnReady || !networkStatus.connected)
+                }
                 onClick={() => {
+                  if (multiplayer) {
+                    roomRef.current?.send("respawn");
+                    return;
+                  }
                   setHud(undefined);
                   setLife(life + 1);
                 }}
@@ -211,7 +236,7 @@ function App() {
               setPlaying(true);
             }}
           >
-            Join movement room
+            Join multiplayer range
           </button>
         </div>
         <figure>

@@ -1,4 +1,4 @@
-import type { Intent, Player } from "@dp/game-config";
+import type { Intent, Player, CombatState, WeaponId } from "@dp/game-config";
 export const FOUNDATION_ROOM = "foundation";
 export const MOVEMENT_ROOM = "foundry-movement";
 export const network = {
@@ -15,12 +15,21 @@ export const idleInput: Intent = {
   crouch: false,
   jump: false,
 };
-export type InputMessage = Intent & { sequence: number };
+export type CombatInput = {
+  pitch: number;
+  pressed: boolean;
+  held: boolean;
+  reload: boolean;
+  weapon: WeaponId | null;
+  life: number;
+};
+export type InputMessage = Intent & { sequence: number; combat?: CombatInput };
 export type PlayerSnapshot = {
   id: string;
   player: Player;
   yaw: number;
   sequence: number;
+  combat?: CombatState;
 };
 export type Snapshot = { tick: number; players: PlayerSnapshot[] };
 
@@ -28,7 +37,19 @@ export function isInput(value: unknown): value is InputMessage {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
   return (
-    Object.keys(v).length === 7 &&
+    Object.keys(v).every((key) =>
+      [
+        "forward",
+        "right",
+        "yaw",
+        "walk",
+        "crouch",
+        "jump",
+        "sequence",
+        "combat",
+      ].includes(key),
+    ) &&
+    (v.combat === undefined || isCombatInput(v.combat)) &&
     Number.isSafeInteger(v.sequence) &&
     Number(v.sequence) > 0 &&
     typeof v.forward === "number" &&
@@ -41,5 +62,22 @@ export function isInput(value: unknown): value is InputMessage {
     typeof v.walk === "boolean" &&
     typeof v.crouch === "boolean" &&
     typeof v.jump === "boolean"
+  );
+}
+
+function isCombatInput(value: unknown): value is CombatInput {
+  if (!value || typeof value !== "object") return false;
+  const c = value as Record<string, unknown>;
+  return (
+    Object.keys(c).length === 6 &&
+    typeof c.pitch === "number" &&
+    Number.isFinite(c.pitch) &&
+    Math.abs(c.pitch) <= 1.48 &&
+    typeof c.pressed === "boolean" &&
+    typeof c.held === "boolean" &&
+    typeof c.reload === "boolean" &&
+    (c.weapon === null || c.weapon === "pistol" || c.weapon === "rifle") &&
+    Number.isSafeInteger(c.life) &&
+    Number(c.life) >= 0
   );
 }
