@@ -1,5 +1,12 @@
-import type { Intent, Player, CombatState, WeaponId } from "@dp/game-config";
+import type {
+  RoundState,
+  Intent,
+  Player,
+  CombatState,
+  WeaponId,
+} from "@dp/game-config";
 export const FOUNDATION_ROOM = "foundation";
+export const ROUND_ROOM = "foundry-rounds";
 export const MOVEMENT_ROOM = "foundry-movement";
 export const network = {
   tickMs: 1000 / 60,
@@ -23,7 +30,11 @@ export type CombatInput = {
   weapon: WeaponId | null;
   life: number;
 };
-export type InputMessage = Intent & { sequence: number; combat?: CombatInput };
+export type InputMessage = Intent & {
+  epoch?: number;
+  sequence: number;
+  combat?: CombatInput;
+};
 export type PlayerSnapshot = {
   id: string;
   player: Player;
@@ -31,7 +42,11 @@ export type PlayerSnapshot = {
   sequence: number;
   combat?: CombatState;
 };
-export type Snapshot = { tick: number; players: PlayerSnapshot[] };
+export type Snapshot = {
+  tick: number;
+  players: PlayerSnapshot[];
+  round?: RoundState;
+};
 
 export function isInput(value: unknown): value is InputMessage {
   if (!value || typeof value !== "object") return false;
@@ -47,8 +62,11 @@ export function isInput(value: unknown): value is InputMessage {
         "jump",
         "sequence",
         "combat",
+        "epoch",
       ].includes(key),
     ) &&
+    (v.epoch === undefined ||
+      (Number.isSafeInteger(v.epoch) && Number(v.epoch) >= 0)) &&
     (v.combat === undefined || isCombatInput(v.combat)) &&
     Number.isSafeInteger(v.sequence) &&
     Number(v.sequence) > 0 &&

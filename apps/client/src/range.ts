@@ -16,6 +16,8 @@ import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import {
+  roundLabels,
+  type RoundState,
   combatRules,
   type CombatState,
   createVitals,
@@ -37,6 +39,16 @@ import {
 } from "@dp/game-config";
 
 export type RangeHud = {
+  round?: {
+    label: string;
+    number: number;
+    seconds: number | null;
+    result: string;
+    attackers: number;
+    defenders: number;
+    aliveAttackers: number;
+    aliveDefenders: number;
+  };
   health: number;
   team?: string;
   kills: number;
@@ -199,10 +211,35 @@ export function startRange(
   let firePressed = false,
     reloadPressed = false;
   let combat: CombatState | undefined;
+  let round: RoundState | undefined;
+  let aliveAttackers = 0,
+    aliveDefenders = 0;
   let serverTick = 0;
   let lastHud = "";
   const reportHud = () => {
     const hud: RangeHud = {
+      round: round
+        ? {
+            label: roundLabels[round.phase],
+            number: round.number,
+            seconds:
+              round.endsAt === null
+                ? null
+                : Math.max(
+                    0,
+                    Math.ceil((round.endsAt - serverTick) * movement.tick),
+                  ),
+            result: round.winner
+              ? round.winner +
+                " win - " +
+                (round.reason === "timeout" ? "time expired" : "elimination")
+              : "",
+            attackers: round.score.Attackers,
+            defenders: round.score.Defenders,
+            aliveAttackers,
+            aliveDefenders,
+          }
+        : undefined,
       health: vitals.health,
       team: combat?.team,
       kills: combat?.kills ?? 0,
@@ -239,6 +276,14 @@ export function startRange(
     ? connectMovement(
         room,
         (snapshot) => {
+          const phaseChanged = round?.epoch !== snapshot.round?.epoch;
+          round = snapshot.round;
+          aliveAttackers = snapshot.players.filter(
+            (p) => p.combat?.team === "Attackers" && p.combat.health > 0,
+          ).length;
+          aliveDefenders = snapshot.players.filter(
+            (p) => p.combat?.team === "Defenders" && p.combat.health > 0,
+          ).length;
           authoritative = snapshot;
           snapshotBuffer.push({ snapshot, time: performance.now() });
           if (snapshotBuffer.length > 20) snapshotBuffer.shift();
@@ -248,13 +293,15 @@ export function startRange(
               const next = local.combat;
               const newLife = !combat || combat.life !== next.life;
               const died = vitals.health > 0 && next.health === 0;
-              if (newLife || died) {
+              if (newLife || died || phaseChanged) {
                 prediction = new MovementPrediction();
                 clearInput();
               }
               if (newLife) {
                 camera.rotation.set(0, local.yaw, 0);
                 recoil = 0;
+                eyeHeight = range.eyeHeight;
+                lastShot = -100;
               }
               camera.rotation.x = Math.max(
                 -1.48,
@@ -369,7 +416,8 @@ export function startRange(
     ) {
       elapsed += Math.min(engine.getDeltaTime() / 1000, 0.1);
       while (elapsed >= movement.tick) {
-        const controlling = active() && document.hasFocus();
+        const canPlay = !round || round.phase === "active";
+        const controlling = active() && document.hasFocus() && canPlay;
         const intent = controlling
           ? {
               forward: Number(keys.has("KeyW")) - Number(keys.has("KeyS")),
@@ -382,15 +430,22 @@ export function startRange(
           : { ...idleInput, yaw: camera.rotation.y };
         if (connection) {
           tick++;
-          const command = connection.send(intent, {
-            pitch: Math.max(-1.48, Math.min(1.48, camera.rotation.x + recoil)),
-            pressed: controlling && firePressed,
-            held: controlling && fireHeld,
-            reload: controlling && reloadPressed,
-            weapon: controlling ? selected : null,
-            life: combat?.life ?? 0,
-          });
-          if (command && vitals.health > 0) prediction.step(command);
+          const command = connection.send(
+            intent,
+            {
+              pitch: Math.max(
+                -1.48,
+                Math.min(1.48, camera.rotation.x + recoil),
+              ),
+              pressed: controlling && firePressed,
+              held: controlling && fireHeld,
+              reload: controlling && reloadPressed,
+              weapon: controlling ? selected : null,
+              life: combat?.life ?? 0,
+            },
+            round?.epoch,
+          );
+          if (command && vitals.health > 0 && canPlay) prediction.step(command);
           firePressed = reloadPressed = false;
           selected = null;
           jumpPressed = false;
@@ -556,9 +611,13 @@ export function startRange(
           !!entry.combat && authoritative.tick - entry.combat.shotTick < 4,
         );
         const a =
-          older.snapshot.players.find((p) => p.id === entry.id) || entry;
+          older.snapshot.players.find(
+            (p) => p.id === entry.id && p.combat?.life === entry.combat?.life,
+          ) || entry;
         const b =
-          newer.snapshot.players.find((p) => p.id === entry.id) || entry;
+          newer.snapshot.players.find(
+            (p) => p.id === entry.id && p.combat?.life === entry.combat?.life,
+          ) || entry;
         const height =
           (a.player.crouched ? 1.1 : 1.8) * (1 - fraction) +
           (b.player.crouched ? 1.1 : 1.8) * fraction;

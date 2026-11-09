@@ -2,14 +2,15 @@ import { Client, type Room } from "@colyseus/sdk";
 import type { Intent } from "@dp/game-config";
 import {
   MOVEMENT_ROOM,
+  ROUND_ROOM,
   type Snapshot,
   type InputMessage,
   type CombatInput,
 } from "@dp/protocol";
 
-export async function joinMovement() {
+export async function joinMovement(rounds = false) {
   const url = import.meta.env.VITE_GAME_SERVER_URL || "http://127.0.0.1:2567";
-  return new Client(url).joinOrCreate(MOVEMENT_ROOM);
+  return new Client(url).joinOrCreate(rounds ? ROUND_ROOM : MOVEMENT_ROOM);
 }
 export type MovementRoom = Room;
 export type NetworkStatus = {
@@ -57,10 +58,11 @@ export function connectMovement(
     if (Date.now() - received > 5000) disconnect();
   }, 1000);
   return {
-    send(input: Intent, combat?: CombatInput) {
+    send(input: Intent, combat?: CombatInput, epoch?: number) {
       if (!connected || disposed) return;
       const command: InputMessage = {
         ...input,
+        ...(epoch === undefined ? {} : { epoch }),
         ...(combat ? { combat } : {}),
         yaw: Math.atan2(Math.sin(input.yaw), Math.cos(input.yaw)),
         sequence: ++sequence,

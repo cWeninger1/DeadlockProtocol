@@ -49,13 +49,13 @@ Deliverable: Two or more players can fight in the browser over a network.
 
 ## Phase 4 — Competitive match loop
 
-- [ ] Implement round states.
-- [ ] Add attacker and defender teams.
+- [ ] Implement all round states. Waiting, warmup, freeze, active and ending are implemented; objective-planted, halftime and match-finished remain.
+- [x] Add attacker and defender teams.
 - [ ] Create objective sites.
 - [ ] Implement planting and defusing.
-- [ ] Add victory conditions.
-- [ ] Add team scoring.
-- [ ] Add round resets.
+- [ ] Add all victory conditions. Elimination and unplanted timeout are implemented; objective outcomes remain.
+- [x] Add team scoring for completed rounds.
+- [x] Add round resets.
 - [ ] Add spectator mode.
 
 Deliverable: Players can finish an entire round-based match.
@@ -137,3 +137,10 @@ Deliverable: A browser-accessible multiplayer game.
 - Phase 3 combat slice complete. The two-player room assigns Attackers/Defenders and owns weapon switches, firing cadence, ammunition, reloading, recoil, cover-aware body hits, health, kills, deaths and a one-second respawn gate. Respawn preserves the room/session and score; life IDs reject delayed commands from a prior life. The client displays authoritative weapon state and team/score HUD, plus remote weapons and muzzle flashes.
 - Verified 21 unit tests and all 15 Chrome browser/integration tests, including two real browser players shooting, dying and respawning; forged combat fields, burst fire limits, dead-player lockout, stale-life input, reloads and weapon switching; existing delayed/batched movement and jumping regressions. Formatting, lint, strict TypeScript and production build pass. Combat currently uses simple body boxes without armor, hit regions or lag compensation. Internet/cross-machine combat, high-latency weapon feel and production hosting remain unverified. The existing Babylon bundle-size warning remains.
 - Next slice: Phase 4 round states and timed round resets. Competitive objectives, scoring rules and spectator mode remain outstanding; free respawning currently belongs to this combat test room.
+
+- Phase 4 first slice: separate round-test room with two players, five-second warmup, 20-second freeze, 115-second active timer and five-second result display. Shared configurable rules control pure transitions. Elimination awards the surviving team; timeout awards defenders. Scores update once, players automatically respawn with fresh loadouts, and individual statistics persist between rounds. Manual respawn is disabled in this mode.
+- Round boundaries clear queued actions, stop velocity and use a phase epoch to reject delayed inputs from earlier states. Prediction resets on phase transitions and life changes. Losing a team returns the room to waiting and clears team scores; replacement players restart warmup. Training modes remain available.
+- Phase 4 remains incomplete: objective sites, planting/defusing, objective wins, halftime, match completion/tie rules and spectator mode are outstanding. The current round test repeats indefinitely on the existing training layout.
+
+- Verified this slice with 26 unit tests and all 17 Chrome browser/integration tests. The real server and two-browser round tests both used the default warmup/freeze durations and completed elimination, score display and automatic reset. Existing movement/jump smoothness and training combat checks pass. Formatting, lint, strict TypeScript and production build pass; the existing Babylon bundle-size warning remains. Timeout precedence is verified with deterministic unit tests; a full 115-second browser timeout, cross-browser behavior and internet play remain unverified.
+- Next Phase 4 slice: objective sites and server-authoritative planting/defusing, including cancellation and objective victory conditions.

@@ -1,5 +1,8 @@
 import { Room, type Client } from "@colyseus/core";
 import {
+  advanceRound,
+  createRound,
+  type RoundState,
   advancePlayer,
   spawnPlayer,
   createCombat,
@@ -33,6 +36,7 @@ type Member = {
 export class MovementRoom extends Room {
   maxClients = 2;
   maxMessagesPerSecond = 180;
+  protected round: RoundState | undefined;
   private tick = 0;
   private elapsed = 0;
   private members = new Map<string, Member>();
@@ -53,24 +57,13 @@ export class MovementRoom extends Room {
     this.onMessage("respawn", (client) => {
       const m = this.members.get(client.sessionId);
       if (
+        this.round !== undefined ||
         !m ||
         m.combat.health > 0 ||
         this.tick - m.combat.diedAt < combatRules.respawnTicks
       )
         return;
-      const previous = m.combat;
-      m.combat = {
-        ...createCombat(previous.team),
-        life: previous.life + 1,
-        kills: previous.kills,
-        deaths: previous.deaths,
-        shots: previous.shots,
-        hits: previous.hits,
-      };
-      m.player = this.spawn(previous.team);
-      m.yaw = previous.team === "Attackers" ? 0 : Math.PI;
-      m.queue = [];
-      m.acknowledged = m.input.sequence;
+      this.resetMember(m);
     });
     this.setSimulationInterval((deltaTime) => {
       // Timers can arrive late under load. Preserve the fixed simulation rate.
@@ -83,12 +76,18 @@ export class MovementRoom extends Room {
   }
   private simulateTick() {
     this.tick++;
+    this.updateRound();
+    const canPlay = !this.round || this.round.phase === "active";
     const commands = new Map<Member, InputMessage>();
     for (const member of this.members.values()) {
       const fresh = this.tick - member.receivedAt <= network.inputTimeoutTicks;
       const command = member.queue.shift();
       if (command) {
-        if (!command.combat || command.combat.life === member.combat.life) {
+        if (
+          canPlay &&
+          (!this.round || command.epoch === this.round.epoch) &&
+          (!command.combat || command.combat.life === member.combat.life)
+        ) {
           if (member.combat.health > 0) {
             member.player = advancePlayer(member.player, command);
             member.yaw = command.yaw;
@@ -96,13 +95,13 @@ export class MovementRoom extends Room {
           }
         }
         member.acknowledged = command.sequence;
-      } else if (!fresh && member.combat.health > 0) {
+      } else if (canPlay && !fresh && member.combat.health > 0) {
         member.player = advancePlayer(member.player, idleInput);
       }
     }
     for (const [id, member] of this.members) {
       const c = member.combat;
-      if (c.health === 0) continue;
+      if (!canPlay || c.health === 0) continue;
       const command = commands.get(member),
         input = command?.combat;
       if (input?.weapon && input.weapon !== c.loadout.active) {
@@ -162,9 +161,11 @@ export class MovementRoom extends Room {
           pitch + 1.48,
         );
     }
+    this.updateRound();
     if (this.tick % network.snapshotEvery === 0) {
       const snapshot: Snapshot = {
         tick: this.tick,
+        ...(this.round ? { round: this.round } : {}),
         players: Array.from(this.members, ([id, m]) => ({
           id,
           player: m.player,
@@ -174,6 +175,38 @@ export class MovementRoom extends Room {
         })),
       };
       this.broadcast("snapshot", snapshot);
+    }
+  }
+  private resetMember(m: Member) {
+    const previous = m.combat;
+    m.combat = {
+      ...createCombat(previous.team),
+      life: previous.life + 1,
+      kills: previous.kills,
+      deaths: previous.deaths,
+      shots: previous.shots,
+      hits: previous.hits,
+    };
+    m.player = this.spawn(previous.team);
+    m.yaw = previous.team === "Attackers" ? 0 : Math.PI;
+    m.queue = [];
+    m.acknowledged = m.input.sequence;
+  }
+  private updateRound() {
+    if (!this.round) return;
+    const next = advanceRound(
+      this.round,
+      this.tick,
+      Array.from(this.members.values(), (m) => m.combat),
+    );
+    if (next === this.round) return;
+    this.round = next;
+    for (const m of this.members.values()) {
+      m.queue = [];
+      m.acknowledged = m.input.sequence;
+      m.player = { ...m.player, vx: 0, vy: 0, vz: 0 };
+      if (next.phase === "freeze" || next.phase === "waiting")
+        this.resetMember(m);
     }
   }
   private spawn(team: Team): Player {
@@ -198,4 +231,8 @@ export class MovementRoom extends Room {
   onLeave(client: Client) {
     this.members.delete(client.sessionId);
   }
+}
+
+export class RoundRoom extends MovementRoom {
+  protected round: RoundState | undefined = createRound();
 }

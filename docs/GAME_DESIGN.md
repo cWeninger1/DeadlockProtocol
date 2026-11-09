@@ -11,3 +11,9 @@ Press 1 for the AR30 rifle or 2 for the F12 pistol. The AR30 carries 30 rounds w
 Players and range targets start with 100 HP. Pistol hits deal 25 damage and rifle hits deal 34 damage to the practice plate. Destroyed plates disappear for three seconds of active play before resetting.
 
 The red striped area to the left of spawn deals 25 damage every half second while touching its floor. Leave the area to stop taking damage. At zero health, gameplay stops and the mouse is released. Respawn creates a fresh range session with full health, fresh ammunition and the default spawn position.
+
+## Round test
+
+A separate two-player mode runs waiting, warmup (5 seconds), freeze (20 seconds), active (115 seconds) and ending (5 seconds). Movement and weapons are enabled only during active play. Elimination wins for the surviving team; an unplanted timeout wins for defenders. The server deadline takes priority on the expiry tick. Team score increments once per completed round.
+
+Each freeze restores both players to their team spawns with 100 HP, full pistol/rifle ammunition and zero recoil. Kills/deaths persist. Manual respawn is unavailable, and dead players see a waiting message until the next freeze. Both teams are required: a departure aborts the sequence, clears team scores and waits for a replacement. The current mode repeats rounds indefinitely. Objective sites, objective states, halftime, match completion and spectator cameras remain outstanding.

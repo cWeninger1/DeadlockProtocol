@@ -15,9 +15,11 @@ configureFirebase();
 function Range({
   leave,
   multiplayer,
+  rounds,
 }: {
   leave: () => void;
   multiplayer: boolean;
+  rounds: boolean;
 }) {
   const [networkStatus, setNetworkStatus] = useState<NetworkStatus>({
     text: "Connecting",
@@ -41,7 +43,7 @@ function Range({
       .then(async ({ startRange }) => {
         if (cancelled) return;
         if (multiplayer) {
-          joined = await joinMovement();
+          joined = await joinMovement(rounds);
           roomRef.current = joined;
           if (cancelled) {
             await joined.leave();
@@ -81,7 +83,7 @@ function Range({
       dispose?.();
       roomRef.current = undefined;
     };
-  }, [life, multiplayer]);
+  }, [life, multiplayer, rounds]);
   async function takeControl() {
     try {
       await canvas.current?.requestPointerLock();
@@ -95,7 +97,30 @@ function Range({
         <aside className="network-status" role="status">
           {networkStatus.text}
           <br />
-          Multiplayer range
+          {rounds ? "Round test" : "Multiplayer range"}
+        </aside>
+      )}
+      {hud?.round && (
+        <aside className="round-hud" aria-label="Round status">
+          <strong>
+            {hud.round.label}
+            {hud.round.number > 0 ? " / Round " + hud.round.number : ""}
+          </strong>
+          <span aria-label="Round timer">
+            {hud.round.seconds === null
+              ? "Join with a second player"
+              : Math.floor(hud.round.seconds / 60) +
+                ":" +
+                String(hud.round.seconds % 60).padStart(2, "0")}
+          </span>
+          <span aria-label="Team score">
+            Attackers {hud.round.attackers} : {hud.round.defenders} Defenders
+          </span>
+          <small>
+            Alive: {hud.round.aliveAttackers} attackers /{" "}
+            {hud.round.aliveDefenders} defenders
+          </small>
+          {hud.round.result && <strong>{hud.round.result}</strong>}
         </aside>
       )}
       <canvas ref={canvas} aria-label="Foundry 3D range" />
@@ -158,7 +183,9 @@ function Range({
           <h2>{dead ? "You died" : ready ? "Range ready" : "Opening range"}</h2>
           {multiplayer && (
             <p>
-              Two-player combat range. Join from a second browser to fight.
+              {rounds
+                ? "Round test: eliminate the opposing team. Defenders win on timeout. Automatic respawn next round. Objectives are coming next."
+                : "Two-player combat range. Join from a second browser to fight."}
               Orange: Attackers. Teal: Defenders.
             </p>
           )}
@@ -166,7 +193,10 @@ function Range({
             {error ||
               "WASD to move · Shift to walk / Ctrl to crouch / Space to jump / Mouse to aim / 1 rifle / 2 pistol / Left click to fire / R to reload · Esc to release"}
           </p>
-          {dead && (
+          {dead && rounds && (
+            <p>You were eliminated. Waiting for the next round.</p>
+          )}
+          {dead && !rounds && (
             <>
               <p>
                 {multiplayer
@@ -204,10 +234,17 @@ function Range({
 }
 
 function App() {
+  const [rounds, setRounds] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [multiplayer, setMultiplayer] = useState(false);
   if (playing)
-    return <Range multiplayer={multiplayer} leave={() => setPlaying(false)} />;
+    return (
+      <Range
+        rounds={rounds}
+        multiplayer={multiplayer}
+        leave={() => setPlaying(false)}
+      />
+    );
   return (
     <main className="menu">
       <header>
@@ -223,6 +260,7 @@ function App() {
           <p>Explore the industrial test range in first person.</p>
           <button
             onClick={() => {
+              setRounds(false);
               setMultiplayer(false);
               setPlaying(true);
             }}
@@ -232,11 +270,22 @@ function App() {
           <button
             className="secondary"
             onClick={() => {
+              setRounds(false);
               setMultiplayer(true);
               setPlaying(true);
             }}
           >
             Join multiplayer range
+          </button>
+          <button
+            className="secondary"
+            onClick={() => {
+              setRounds(true);
+              setMultiplayer(true);
+              setPlaying(true);
+            }}
+          >
+            Join round test
           </button>
         </div>
         <figure>
