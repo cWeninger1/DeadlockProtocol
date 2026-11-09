@@ -191,3 +191,20 @@ canvas {
 .brief button {
   margin: 0.25rem 0.25rem 0.25rem 0;
 }
+
+.objective-hud {
+  position: fixed;
+  left: 50%;
+  bottom: 2rem;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #17221ef2;
+  border-bottom: 3px solid #efb178;
+  pointer-events: none;
+}
+.objective-hud progress {
+  width: 100%;
+  accent-color: #efb178;
+}

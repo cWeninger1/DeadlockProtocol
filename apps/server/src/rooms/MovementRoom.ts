@@ -1,5 +1,7 @@
 import { Room, type Client } from "@colyseus/core";
 import {
+  advanceObjective,
+  createObjective,
   advanceRound,
   createRound,
   type RoundState,
@@ -32,6 +34,8 @@ type Member = {
   receivedAt: number;
   queue: InputMessage[];
   acknowledged: number;
+  interacting: boolean;
+  interactedAt: number;
 };
 export class MovementRoom extends Room {
   maxClients = 2;
@@ -77,7 +81,10 @@ export class MovementRoom extends Room {
   private simulateTick() {
     this.tick++;
     this.updateRound();
-    const canPlay = !this.round || this.round.phase === "active";
+    const canPlay =
+      !this.round ||
+      this.round.phase === "active" ||
+      this.round.phase === "planted";
     const commands = new Map<Member, InputMessage>();
     for (const member of this.members.values()) {
       const fresh = this.tick - member.receivedAt <= network.inputTimeoutTicks;
@@ -92,8 +99,11 @@ export class MovementRoom extends Room {
             member.player = advancePlayer(member.player, command);
             member.yaw = command.yaw;
             commands.set(member, command);
+            member.interacting = command.interact === true;
+            member.interactedAt = this.tick;
           }
         }
+        if (!commands.has(member)) member.interacting = false;
         member.acknowledged = command.sequence;
       } else if (canPlay && !fresh && member.combat.health > 0) {
         member.player = advancePlayer(member.player, idleInput);
@@ -112,12 +122,16 @@ export class MovementRoom extends Room {
         c.recoil = Math.max(0, c.recoil - rangeRifle.recoilRecovery);
         if (c.recoil === 0) c.burst = 0;
       }
+      const interacting =
+        this.round &&
+        member.interacting &&
+        this.tick - member.interactedAt <= network.inputTimeoutTicks;
       const before = c.loadout.inventory[c.loadout.active];
       c.loadout = advanceLoadout(
         c.loadout,
         this.tick,
-        input?.pressed ?? false,
-        input?.held ?? false,
+        !interacting && (input?.pressed ?? false),
+        !interacting && (input?.held ?? false),
         input?.reload ?? false,
       );
       if (c.loadout.inventory[c.loadout.active].nextShot === before.nextShot)
@@ -161,6 +175,23 @@ export class MovementRoom extends Room {
           pitch + 1.48,
         );
     }
+    if (this.round?.objective) {
+      const objective = advanceObjective(
+        this.round.objective,
+        this.tick,
+        this.round.phase,
+        Array.from(this.members, ([id, m]) => ({
+          id,
+          team: m.combat.team,
+          health: m.combat.health,
+          player: m.player,
+          interact:
+            m.interacting &&
+            this.tick - m.interactedAt <= network.inputTimeoutTicks,
+        })),
+      );
+      this.round = { ...this.round, objective };
+    }
     this.updateRound();
     if (this.tick % network.snapshotEvery === 0) {
       const snapshot: Snapshot = {
@@ -189,6 +220,7 @@ export class MovementRoom extends Room {
     };
     m.player = this.spawn(previous.team);
     m.yaw = previous.team === "Attackers" ? 0 : Math.PI;
+    m.interacting = false;
     m.queue = [];
     m.acknowledged = m.input.sequence;
   }
@@ -201,7 +233,17 @@ export class MovementRoom extends Room {
     );
     if (next === this.round) return;
     this.round = next;
+    if (next.phase === "freeze")
+      this.round = {
+        ...next,
+        objective: createObjective(
+          Array.from(this.members).find(
+            ([, m]) => m.combat.team === "Attackers",
+          )?.[0] ?? null,
+        ),
+      };
     for (const m of this.members.values()) {
+      m.interacting = false;
       m.queue = [];
       m.acknowledged = m.input.sequence;
       m.player = { ...m.player, vx: 0, vy: 0, vz: 0 };
@@ -226,6 +268,8 @@ export class MovementRoom extends Room {
       receivedAt: this.tick,
       queue: [],
       acknowledged: 0,
+      interacting: false,
+      interactedAt: -1000,
     });
   }
   onLeave(client: Client) {

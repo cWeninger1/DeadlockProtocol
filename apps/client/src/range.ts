@@ -1,10 +1,12 @@
+import { createObjectiveAudio } from "./objectiveAudio";
+import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
 import { MovementPrediction } from "./networking/prediction";
 import {
   connectMovement,
   type MovementRoom,
   type NetworkStatus,
 } from "./networking/movement";
-import { idleInput, type Snapshot } from "@dp/protocol";
+import { ROUND_ROOM, idleInput, type Snapshot } from "@dp/protocol";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import "@babylonjs/core/Culling/ray";
 import { Engine } from "@babylonjs/core/Engines/engine";
@@ -16,6 +18,9 @@ import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import {
+  objectiveSites,
+  objectiveRules,
+  siteAt,
   roundLabels,
   type RoundState,
   combatRules,
@@ -39,6 +44,8 @@ import {
 } from "@dp/game-config";
 
 export type RangeHud = {
+  objective: string;
+  objectiveProgress: number;
   round?: {
     label: string;
     number: number;
@@ -70,6 +77,7 @@ export function startRange(
   room?: MovementRoom,
   onNetworkStatus: (status: NetworkStatus) => void = () => {},
 ) {
+  const audio = createObjectiveAudio();
   const engine = new Engine(canvas, true);
   const scene = new Scene(engine);
   scene.clearColor = new Color4(0.45, 0.55, 0.57, 1);
@@ -137,6 +145,68 @@ export function startRange(
         ochre,
       );
   }
+  if (room?.name === ROUND_ROOM) {
+    for (const site of objectiveSites) {
+      const paint = material(
+        "site " + site.id,
+        site.id === "A" ? "#e79a37" : "#45c9b6",
+      );
+      for (const side of [-1, 1]) {
+        box(
+          "site boundary",
+          site.x + side * site.radius,
+          0.02,
+          site.z,
+          0.08,
+          0.04,
+          site.radius * 2,
+          paint,
+        ).isPickable = false;
+        box(
+          "site boundary",
+          site.x,
+          0.02,
+          site.z + side * site.radius,
+          site.radius * 2,
+          0.04,
+          0.08,
+          paint,
+        ).isPickable = false;
+      }
+      const label = new DynamicTexture(
+        "site label",
+        { width: 512, height: 128 },
+        scene,
+        false,
+      );
+      label.drawText(
+        "SITE " + site.id,
+        null,
+        90,
+        "bold 80px Arial",
+        "white",
+        "#17221e",
+        true,
+      );
+      const sign = material("site sign", "#ffffff");
+      sign.diffuseTexture = label;
+      const mesh = box(
+        "Site " + site.id,
+        site.x,
+        2.6,
+        site.z + site.radius,
+        2,
+        0.5,
+        0.02,
+        sign,
+      );
+      mesh.billboardMode = 7;
+      mesh.isPickable = false;
+    }
+  }
+  const device = box("objective device", 0, 0, 0, 0.35, 0.2, 0.5, ochre);
+  device.isPickable = false;
+  device.setEnabled(false);
   const danger = material("hazard red", "#c64128");
   box(
     "hazard floor",
@@ -216,8 +286,12 @@ export function startRange(
     aliveDefenders = 0;
   let serverTick = 0;
   let lastHud = "";
+  let objectiveHint = "";
+  let objectiveProgress = 0;
   const reportHud = () => {
     const hud: RangeHud = {
+      objective: objectiveHint,
+      objectiveProgress,
       round: round
         ? {
             label: roundLabels[round.phase],
@@ -232,7 +306,7 @@ export function startRange(
             result: round.winner
               ? round.winner +
                 " win - " +
-                (round.reason === "timeout" ? "time expired" : "elimination")
+                (round.reason === "timeout" ? "time expired" : round.reason)
               : "",
             attackers: round.score.Attackers,
             defenders: round.score.Defenders,
@@ -277,7 +351,24 @@ export function startRange(
         room,
         (snapshot) => {
           const phaseChanged = round?.epoch !== snapshot.round?.epoch;
+          const oldPhase = round?.phase;
           round = snapshot.round;
+          if (round?.phase === "planted" && oldPhase !== "planted")
+            audio.cue("planted");
+          if (
+            round?.phase === "ending" &&
+            oldPhase !== "ending" &&
+            (round.reason === "defused" || round.reason === "detonated")
+          )
+            audio.cue(round.reason);
+          const objective = round?.objective;
+          device.setEnabled(!!objective?.position);
+          if (objective?.position)
+            device.position.set(
+              objective.position.x,
+              objective.position.y + 0.12,
+              objective.position.z,
+            );
           aliveAttackers = snapshot.players.filter(
             (p) => p.combat?.team === "Attackers" && p.combat.health > 0,
           ).length;
@@ -289,6 +380,46 @@ export function startRange(
           if (snapshotBuffer.length > 20) snapshotBuffer.shift();
           const local = snapshot.players.find((p) => p.id === room?.sessionId);
           if (local) {
+            objectiveProgress = 0;
+            objectiveHint = "";
+            if (round && objective) {
+              if (objective.action) {
+                const action = objective.action;
+                const duration =
+                  action.kind === "plant"
+                    ? objectiveRules.plantTicks
+                    : objectiveRules.defuseTicks;
+                objectiveProgress = Math.min(
+                  100,
+                  Math.floor(
+                    (100 * (snapshot.tick - action.startedAt)) / duration,
+                  ),
+                );
+                objectiveHint =
+                  (action.kind === "plant"
+                    ? "Planting Site "
+                    : "Defusing Site ") + action.site;
+              } else if (round.phase === "planted") {
+                const near =
+                  objective.position &&
+                  Math.hypot(
+                    local.player.x - objective.position.x,
+                    local.player.y - objective.position.y,
+                    local.player.z - objective.position.z,
+                  ) <= objectiveRules.defuseRadius;
+                objectiveHint =
+                  local.combat?.team === "Defenders" && near
+                    ? "Hold E to defuse (10 seconds)"
+                    : "Objective planted at Site " + objective.site;
+              } else if (round.phase === "active") {
+                objectiveHint =
+                  objective.carrier === local.id
+                    ? siteAt(local.player)
+                      ? "Hold E to plant (5 seconds)"
+                      : "Carrying objective - reach Site A or B"
+                    : "Defend Site A and Site B";
+              }
+            }
             if (local.combat) {
               const next = local.combat;
               const newLife = !combat || combat.life !== next.life;
@@ -335,6 +466,7 @@ export function startRange(
     center.setEnabled(false);
   }
   const movementKeys = new Set([
+    "KeyE",
     "Digit1",
     "Digit2",
     "KeyR",
@@ -368,6 +500,7 @@ export function startRange(
   document.addEventListener(
     "mousedown",
     (e) => {
+      if (active()) audio.unlock();
       if (active() && e.button === 0) firePressed = fireHeld = true;
     },
     options,
@@ -383,6 +516,7 @@ export function startRange(
     "keydown",
     (e) => {
       if (!active() || !movementKeys.has(e.code)) return;
+      audio.unlock();
       e.preventDefault();
       if (e.code === "Space" && !e.repeat) jumpPressed = true;
       if (e.code === "KeyR" && !e.repeat) reloadPressed = true;
@@ -416,7 +550,8 @@ export function startRange(
     ) {
       elapsed += Math.min(engine.getDeltaTime() / 1000, 0.1);
       while (elapsed >= movement.tick) {
-        const canPlay = !round || round.phase === "active";
+        const canPlay =
+          !round || round.phase === "active" || round.phase === "planted";
         const controlling = active() && document.hasFocus() && canPlay;
         const intent = controlling
           ? {
@@ -444,6 +579,7 @@ export function startRange(
               life: combat?.life ?? 0,
             },
             round?.epoch,
+            controlling && keys.has("KeyE"),
           );
           if (command && vitals.health > 0 && canPlay) prediction.step(command);
           firePressed = reloadPressed = false;
@@ -677,6 +813,7 @@ export function startRange(
     }
   });
   return () => {
+    audio.dispose();
     connection?.dispose();
     events.abort();
     if (active()) document.exitPointerLock();

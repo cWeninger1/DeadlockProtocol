@@ -58,10 +58,16 @@ export function connectMovement(
     if (Date.now() - received > 5000) disconnect();
   }, 1000);
   return {
-    send(input: Intent, combat?: CombatInput, epoch?: number) {
+    send(
+      input: Intent,
+      combat?: CombatInput,
+      epoch?: number,
+      interact = false,
+    ) {
       if (!connected || disposed) return;
       const command: InputMessage = {
         ...input,
+        interact,
         ...(epoch === undefined ? {} : { epoch }),
         ...(combat ? { combat } : {}),
         yaw: Math.atan2(Math.sin(input.yaw), Math.cos(input.yaw)),

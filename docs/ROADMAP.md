@@ -49,11 +49,11 @@ Deliverable: Two or more players can fight in the browser over a network.
 
 ## Phase 4 — Competitive match loop
 
-- [ ] Implement all round states. Waiting, warmup, freeze, active and ending are implemented; objective-planted, halftime and match-finished remain.
+- [ ] Implement all round states. Waiting, warmup, freeze, active, objective-planted and ending are implemented; halftime and match-finished remain.
 - [x] Add attacker and defender teams.
-- [ ] Create objective sites.
-- [ ] Implement planting and defusing.
-- [ ] Add all victory conditions. Elimination and unplanted timeout are implemented; objective outcomes remain.
+- [x] Create objective sites.
+- [x] Implement planting and standard defusing. Purchased defuse kits belong to the economy phase.
+- [x] Add round victory conditions: elimination before planting, unplanted timeout, detonation and defuse.
 - [x] Add team scoring for completed rounds.
 - [x] Add round resets.
 - [ ] Add spectator mode.
@@ -144,3 +144,9 @@ Deliverable: A browser-accessible multiplayer game.
 
 - Verified this slice with 26 unit tests and all 17 Chrome browser/integration tests. The real server and two-browser round tests both used the default warmup/freeze durations and completed elimination, score display and automatic reset. Existing movement/jump smoothness and training combat checks pass. Formatting, lint, strict TypeScript and production build pass; the existing Babylon bundle-size warning remains. Timeout precedence is verified with deterministic unit tests; a full 115-second browser timeout, cross-browser behavior and internet play remain unverified.
 - Next Phase 4 slice: objective sites and server-authoritative planting/defusing, including cancellation and objective victory conditions.
+
+- Phase 4 objective slice: marked Site A and Site B, server-assigned attacker carrier, hold-E planting (5 seconds), standard defusing (10 seconds), a 40-second planted clock, replicated progress/device and original synthesized result cues. Alive, grounded, stationary players must stay in the site/interaction radius; releasing E, moving, dying, leaving range or stale input cancels progress. Holding E suppresses gunfire.
+- Planted rounds continue after either team is eliminated. Defuse wins for defenders; detonation wins for attackers. Expiry wins exact deadline ties. Objective state and carrier reset with each new round. Disconnects retain the existing abort-to-waiting policy. One attacker per test room means carrier drop/pickup is not yet needed; larger teams, purchased kits, full map balancing, halftime, match completion and spectator mode remain outstanding.
+
+- Objective verification: 34 unit tests and all 19 Chrome browser/integration tests pass. The server test waits through the real 40-second fuse after attacker death; the two-browser flow verifies canceled/restarted planting and defusing, shared progress, defender score and next-round reset. Existing jump/movement regressions pass. Formatting, lint, strict TypeScript and production build pass. The initial browser run exposed a dependency-optimizer reload on first join; explicit Vite scene scanning fixed it, and the full suite passes with forced fresh optimization. The existing bundle-size warning remains. Audio quality, cross-browser behavior and internet objective play remain unverified.
+- Next Phase 4 slice: halftime, team-side switching and full match completion/tie rules, followed by spectator mode.

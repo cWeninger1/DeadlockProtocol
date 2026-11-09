@@ -31,6 +31,7 @@ export type CombatInput = {
   life: number;
 };
 export type InputMessage = Intent & {
+  interact?: boolean;
   epoch?: number;
   sequence: number;
   combat?: CombatInput;
@@ -63,8 +64,10 @@ export function isInput(value: unknown): value is InputMessage {
         "sequence",
         "combat",
         "epoch",
+        "interact",
       ].includes(key),
     ) &&
+    (v.interact === undefined || typeof v.interact === "boolean") &&
     (v.epoch === undefined ||
       (Number.isSafeInteger(v.epoch) && Number(v.epoch) >= 0)) &&
     (v.combat === undefined || isCombatInput(v.combat)) &&

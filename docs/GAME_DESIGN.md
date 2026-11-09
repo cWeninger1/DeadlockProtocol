@@ -14,6 +14,14 @@ The red striped area to the left of spawn deals 25 damage every half second whil
 
 ## Round test
 
-A separate two-player mode runs waiting, warmup (5 seconds), freeze (20 seconds), active (115 seconds) and ending (5 seconds). Movement and weapons are enabled only during active play. Elimination wins for the surviving team; an unplanted timeout wins for defenders. The server deadline takes priority on the expiry tick. Team score increments once per completed round.
+A separate two-player mode runs waiting, warmup (5 seconds), freeze (20 seconds), active (115 seconds) and ending (5 seconds). Movement and weapons are enabled during active and planted play. Before planting, elimination wins for the surviving team; an unplanted timeout wins for defenders. The server deadline takes priority on the expiry tick. Team score increments once per completed round.
 
-Each freeze restores both players to their team spawns with 100 HP, full pistol/rifle ammunition and zero recoil. Kills/deaths persist. Manual respawn is unavailable, and dead players see a waiting message until the next freeze. Both teams are required: a departure aborts the sequence, clears team scores and waits for a replacement. The current mode repeats rounds indefinitely. Objective sites, objective states, halftime, match completion and spectator cameras remain outstanding.
+Each freeze restores both players to their team spawns with 100 HP, full pistol/rifle ammunition and zero recoil. Kills/deaths persist. Manual respawn is unavailable, and dead players see a waiting message until the next freeze. Both teams are required: a departure aborts the sequence, clears team scores and waits for a replacement. The current mode repeats rounds indefinitely. Halftime, match completion and spectator cameras remain outstanding.
+
+## Objectives
+
+Round tests now include Site A at (8, -16) and Site B at (-10, 8). Shared site geometry defines the allowed planting zones. The sole attacker receives the objective each round. Hold E while stationary and grounded inside a site for five seconds to plant. The device appears at the authoritative planting position. Holding E suppresses gunfire; movement cancels the action.
+
+Defenders within two metres of the device hold E for ten seconds to defuse. Action progress resets on release, movement, leaving range, death or expired input. Planting replaces the active clock with a 40-second fuse. After planting, player eliminations do not end the round: defenders must defuse or attackers win on expiry. The deadline takes priority over an action completing on that tick. Scores update once and objective state resets next round. A team disconnect still aborts the test round.
+
+Simple original Web Audio tones announce planting, defuse and detonation after the browser has received a gameplay gesture. Muted/suspended browsers retain visual feedback. Purchased defuse kits, larger-team carrier dropping/pickup, blast damage and polished sound/impact effects are future work.

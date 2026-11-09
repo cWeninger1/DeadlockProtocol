@@ -1,3 +1,4 @@
+import { objectiveRules, type ObjectiveState } from "./objective";
 import type { Team } from "./combat";
 import { movement } from "./settings";
 
@@ -8,14 +9,16 @@ export const roundRules = {
   endingTicks: 5 / movement.tick,
 };
 export type RoundRules = typeof roundRules;
-export type RoundPhase = "waiting" | "warmup" | "freeze" | "active" | "ending";
+export type RoundPhase =
+  "waiting" | "warmup" | "freeze" | "active" | "planted" | "ending";
 export type RoundState = {
+  objective: ObjectiveState | null;
   phase: RoundPhase;
   epoch: number;
   number: number;
   endsAt: number | null;
   winner: Team | null;
-  reason: "elimination" | "timeout" | null;
+  reason: "elimination" | "timeout" | "defused" | "detonated" | null;
   score: Record<Team, number>;
 };
 export type RoundPlayer = { team: Team; health: number };
@@ -25,9 +28,11 @@ export const roundLabels: Record<RoundPhase, string> = {
   freeze: "Freeze time",
   active: "Round active",
   ending: "Round ending",
+  planted: "Objective planted",
 };
 export function createRound(epoch = 0): RoundState {
   return {
+    objective: null,
     phase: "waiting",
     epoch,
     number: 0,
@@ -67,7 +72,10 @@ export function advanceRound(
     const timeout = tick >= state.endsAt!;
     const winner: Team | null =
       timeout || !attackers ? "Defenders" : !defenders ? "Attackers" : null;
-    if (!winner) return state;
+    if (!winner)
+      return state.objective?.position
+        ? enter("planted", objectiveRules.fuseTicks)
+        : state;
     return {
       ...enter("ending", rules.endingTicks),
       winner,
@@ -75,10 +83,22 @@ export function advanceRound(
       score: { ...state.score, [winner]: state.score[winner] + 1 },
     };
   }
+  if (state.phase === "planted") {
+    const expired = tick >= state.endsAt!;
+    if (!expired && !state.objective?.defused) return state;
+    const winner: Team = expired ? "Attackers" : "Defenders";
+    return {
+      ...enter("ending", rules.endingTicks),
+      winner,
+      reason: expired ? "detonated" : "defused",
+      score: { ...state.score, [winner]: state.score[winner] + 1 },
+    };
+  }
   if (tick < state.endsAt!) return state;
   if (state.phase === "warmup" || state.phase === "ending")
     return {
       ...enter("freeze", rules.freezeTicks),
+      objective: null,
       number: state.number + 1,
       winner: null,
       reason: null,

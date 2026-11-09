@@ -4,3 +4,4 @@ export * from "./weapon";
 export * from "./health";
 export * from "./combat";
 export * from "./round";
+export * from "./objective";

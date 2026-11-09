@@ -123,6 +123,18 @@ function Range({
           {hud.round.result && <strong>{hud.round.result}</strong>}
         </aside>
       )}
+      {rounds && hud?.objective && (
+        <aside className="objective-hud" aria-label="Objective status">
+          <strong>{hud.objective}</strong>
+          {hud.objectiveProgress > 0 && (
+            <progress
+              aria-label="Objective progress"
+              value={hud.objectiveProgress}
+              max={100}
+            />
+          )}
+        </aside>
+      )}
       <canvas ref={canvas} aria-label="Foundry 3D range" />
       {locked && !dead ? (
         <>
@@ -184,7 +196,7 @@ function Range({
           {multiplayer && (
             <p>
               {rounds
-                ? "Round test: eliminate the opposing team. Defenders win on timeout. Automatic respawn next round. Objectives are coming next."
+                ? "Attackers: carry the objective to Site A or B and hold E for 5 seconds. Defenders: hold E near the planted device for 10 seconds. Stay still during actions. Detonation takes 40 seconds. Automatic respawn next round."
                 : "Two-player combat range. Join from a second browser to fight."}
               Orange: Attackers. Teal: Defenders.
             </p>
