@@ -28,3 +28,17 @@ class SpectatorTestRoom extends RoundRoom {
   protected round = createRound(0, this.rules);
 }
 server.define("foundry-rounds-spectator", SpectatorTestRoom);
+
+class EconomyTestRoom extends RoundRoom {
+  protected rules = {
+    ...roundRules,
+    warmupTicks: 60,
+    freezeTicks: 300,
+    endingTicks: 60,
+    halftimeTicks: 120,
+    roundsPerHalf: 4,
+    roundsToWin: 5,
+  };
+  protected round = createRound(0, this.rules);
+}
+server.define("foundry-rounds-economy", EconomyTestRoom);

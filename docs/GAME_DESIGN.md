@@ -16,7 +16,7 @@ The red striped area to the left of spawn deals 25 damage every half second whil
 
 A separate two-player mode runs waiting, warmup (5 seconds), freeze (20 seconds), active (115 seconds) and ending (5 seconds). Movement and weapons are enabled during active and planted play. Before planting, elimination wins for the surviving team; an unplanted timeout wins for defenders. The server deadline takes priority on the expiry tick. Team score increments once per completed round.
 
-Each freeze restores both players to their team spawns with 100 HP, full pistol/rifle ammunition and zero recoil. Kills/deaths persist. Manual respawn is unavailable, and dead players watch live spectator views until the next freeze. Both teams are required: a departure aborts the sequence, clears team scores and waits for a replacement. The mode now completes regulation matches and includes spectator overview cameras.
+Each freeze restores both players to their team spawns with 100 HP, full ammunition for owned weapons and zero recoil. Kills/deaths persist. Manual respawn is unavailable, and dead players watch live spectator views until the next freeze. Both teams are required: a departure aborts the sequence, clears team scores and waits for a replacement. The mode now completes regulation matches and includes spectator overview cameras.
 
 ## Objectives
 
@@ -39,3 +39,11 @@ A departure before completion aborts the current match and clears team scores, r
 The current two-player round mode gives eliminated players static elevated views over Foundry and both sites. Auto selects the planted objective when present. Camera selection changes the view without changing the player's authoritative position or aim. The live scene, objective progress and round timer remain visible. Death releases the mouse and hides the weapon; there is no dead-player movement, firing, planting or manual respawn.
 
 The next life restores the spawn camera and offers Resume. Halftime and finished-match handling retain their existing behavior. These unrestricted overviews are appropriate to the current one-player-per-team test; teammate-only follow cameras and spectator visibility policy must precede larger competitive teams.
+
+## Initial round economy
+
+The round test starts each half with $800 and a free F12 pistol. Currency caps at $16000. Wins award $3250; consecutive losses award $1400, $1900, $2400, $2900 and then $3400. A win resets the loss streak. Both current weapons award $300 per kill, and successful planters/defusers earn $300 personally. Round rewards include dead players and are awarded once when the result is established.
+
+Both sides can buy the AR30 for $2700 during freeze time within three metres of their own spawn. Freeze duration is the buy timer. Refunds return the full price only for a rifle bought during that same freeze. A single primary slot prevents duplicate purchases. Pistol ownership is permanent. Surviving rifles carry into the next round with replenished ammunition; death removes the rifle at the next reset. Halftime and aborted matches reset currency, loss streaks and equipment. These are centralized initial balance rules, not final competitive tuning.
+
+Armor, defuse kits, utilities, additional purchasable weapons and dropped weapon pickup remain outstanding. The initial menu lists only implemented equipment.

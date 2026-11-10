@@ -234,3 +234,61 @@ canvas {
   background: #efb178;
   color: #181d17;
 }
+
+.economy-hud {
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  z-index: 2;
+  display: grid;
+  gap: 0.5rem;
+  max-width: 15rem;
+  padding: 0.8rem;
+  background: #17221ef2;
+  color: #eef1e9;
+}
+.economy-hud strong {
+  font-size: 1.5rem;
+  color: #ffac57;
+}
+.economy-hud button {
+  font-size: 0.9rem;
+  padding: 0.6rem;
+}
+.buy-menu {
+  width: min(36rem, calc(100vw - 4rem));
+  max-height: calc(100vh - 4rem);
+  overflow: auto;
+  padding: 1.5rem;
+  border: 1px solid #839487;
+  background: #17221e;
+  color: #eef1e9;
+}
+.buy-menu::backdrop {
+  background: #06100bbd;
+}
+.buy-menu article {
+  padding: 1rem;
+  border: 1px solid #45534d;
+  margin: 1rem 0;
+}
+.buy-menu h3 {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.buy-menu h3 span {
+  color: #ffac57;
+}
+.buy-menu p {
+  line-height: 1.5;
+  margin: 0.75rem 0;
+}
+.buy-menu h2,
+.buy-menu h3 {
+  margin: 0.75rem 0;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

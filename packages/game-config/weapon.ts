@@ -1,6 +1,7 @@
 export const rangePistol = {
   name: "F12 Pistol",
   damage: 25,
+  killReward: 300,
   automatic: false,
   equipTicks: 18,
   capacity: 12,
@@ -64,6 +65,7 @@ export function updateWeapon(
 export const rangeRifle = {
   name: "AR30 Rifle",
   damage: 34,
+  killReward: 300,
   automatic: true,
   capacity: 30,
   reserve: 90,
@@ -77,12 +79,16 @@ export const rangeRifle = {
 export const weapons = { pistol: rangePistol, rifle: rangeRifle };
 export type WeaponId = keyof typeof weapons;
 export type Loadout = {
+  owned: WeaponId[];
   active: WeaponId;
   readyAt: number;
   inventory: Record<WeaponId, WeaponState>;
 };
-export function createLoadout(): Loadout {
+export function createLoadout(
+  owned: WeaponId[] = ["pistol", "rifle"],
+): Loadout {
   return {
+    owned: [...owned],
     active: "pistol",
     readyAt: 0,
     inventory: {
@@ -96,9 +102,10 @@ export function switchWeapon(
   id: WeaponId,
   tick: number,
 ): Loadout {
-  if (id === loadout.active) return loadout;
+  if (!loadout.owned.includes(id) || id === loadout.active) return loadout;
   const current = loadout.inventory[loadout.active];
   return {
+    ...loadout,
     active: id,
     readyAt: tick + weapons[id].equipTicks,
     inventory: {

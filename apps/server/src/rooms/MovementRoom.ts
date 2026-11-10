@@ -1,5 +1,13 @@
 import { Room, type Client } from "@colyseus/core";
 import {
+  buyRestriction,
+  createEconomy,
+  credit,
+  economyRules,
+  rewardRound,
+  tradeRifle,
+  createLoadout,
+  type EconomyState,
   roundRules,
   sideForSquad,
   type Squad,
@@ -22,6 +30,7 @@ import {
   type Team,
 } from "@dp/game-config";
 import {
+  isBuyRequest,
   idleInput,
   isInput,
   network,
@@ -30,6 +39,7 @@ import {
 } from "@dp/protocol";
 
 type Member = {
+  economy?: EconomyState;
   squad: Squad;
   player: Player;
   combat: CombatState;
@@ -50,6 +60,44 @@ export class MovementRoom extends Room {
   private elapsed = 0;
   private members = new Map<string, Member>();
   onCreate() {
+    this.onMessage("buy", (client, value: unknown) => {
+      const m = this.members.get(client.sessionId);
+      if (!m || !m.economy || !this.round) return;
+      let error: string | null = null;
+      if (!isBuyRequest(value)) error = "Invalid purchase request.";
+      else if (value.epoch !== this.round.epoch || value.life !== m.combat.life)
+        error = "The buy window changed. Try again during freeze time.";
+      else {
+        error = buyRestriction(
+          this.round,
+          this.tick,
+          m.combat.health,
+          m.combat.team,
+          m.player,
+        );
+        if (!error) {
+          const result = tradeRifle(
+            m.economy,
+            m.combat.loadout,
+            value.epoch,
+            this.tick,
+            value.action,
+          );
+          if (result.error) error = result.error;
+          else if (result.economy && result.loadout) {
+            m.economy = result.economy;
+            m.combat.loadout = result.loadout;
+          }
+        }
+      }
+      client.send("buyResult", {
+        text:
+          error ??
+          (isBuyRequest(value) && value.action === "refund"
+            ? "AR30 refunded."
+            : "AR30 purchased. Press 1 to equip."),
+      });
+    });
     this.onMessage("input", (client, value: unknown) => {
       const member = this.members.get(client.sessionId);
       if (!member) return;
@@ -169,6 +217,8 @@ export class MovementRoom extends Room {
         victim.combat.health = Math.max(0, victim.combat.health - def.damage);
         if (victim.combat.health === 0) {
           c.kills++;
+          if (member.economy)
+            member.economy = credit(member.economy, def.killReward);
           victim.combat.deaths++;
           victim.combat.diedAt = this.tick;
           victim.player = { ...victim.player, vx: 0, vy: 0, vz: 0 };
@@ -181,6 +231,7 @@ export class MovementRoom extends Room {
         );
     }
     if (this.round?.objective) {
+      const previousObjective = this.round.objective;
       const objective = advanceObjective(
         this.round.objective,
         this.tick,
@@ -195,6 +246,17 @@ export class MovementRoom extends Room {
             this.tick - m.interactedAt <= network.inputTimeoutTicks,
         })),
       );
+      if (previousObjective.action) {
+        const actor = this.members.get(previousObjective.action.actor);
+        const reward =
+          !previousObjective.position && objective.position
+            ? economyRules.plantReward
+            : !previousObjective.defused && objective.defused
+              ? economyRules.defuseReward
+              : 0;
+        if (actor?.economy && reward)
+          actor.economy = credit(actor.economy, reward);
+      }
       this.round = { ...this.round, objective };
     }
     this.updateRound();
@@ -205,6 +267,7 @@ export class MovementRoom extends Room {
         players: Array.from(this.members, ([id, m]) => ({
           id,
           squad: m.squad,
+          ...(m.economy ? { economy: m.economy } : {}),
           player: m.player,
           yaw: m.yaw,
           combat: m.combat,
@@ -224,6 +287,14 @@ export class MovementRoom extends Room {
       shots: previous.shots,
       hits: previous.hits,
     };
+    if (m.economy) {
+      const freshHalf =
+        this.round?.phase === "waiting" || this.round?.phase === "halftime";
+      if (freshHalf) m.economy = createEconomy();
+      m.combat.loadout = createLoadout(
+        !freshHalf && previous.health > 0 ? previous.loadout.owned : ["pistol"],
+      );
+    }
     m.player = this.spawn(previous.team);
     m.yaw = previous.team === "Attackers" ? 0 : Math.PI;
     m.interacting = false;
@@ -239,6 +310,10 @@ export class MovementRoom extends Room {
       this.rules,
     );
     if (next === this.round) return;
+    if (next.phase === "ending" && this.round.phase !== "ending")
+      for (const m of this.members.values())
+        if (m.economy)
+          m.economy = rewardRound(m.economy, m.combat.team === next.winner);
     this.round = next;
     if (next.phase === "finished") void this.lock();
     for (const m of this.members.values())
@@ -277,8 +352,12 @@ export class MovementRoom extends Room {
     const team = sideForSquad(squad, this.round?.swapped ?? false);
     this.members.set(client.sessionId, {
       squad,
+      ...(this.round ? { economy: createEconomy() } : {}),
       player: this.spawn(team),
-      combat: createCombat(team),
+      combat: {
+        ...createCombat(team),
+        loadout: createLoadout(this.round ? ["pistol"] : ["pistol", "rifle"]),
+      },
       yaw: team === "Attackers" ? 0 : Math.PI,
       input: { ...idleInput, sequence: 0 },
       receivedAt: this.tick,

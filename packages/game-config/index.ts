@@ -5,3 +5,4 @@ export * from "./health";
 export * from "./combat";
 export * from "./round";
 export * from "./objective";
+export * from "./economy";

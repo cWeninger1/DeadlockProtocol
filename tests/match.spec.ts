@@ -53,6 +53,8 @@ test("halftime changes roles and carrier, preserves scores, and finished matches
       deaths: 1,
       health: 100,
     });
+    expect(own().economy).toMatchObject({ money: 800, losses: 0 });
+    expect(enemy().economy).toMatchObject({ money: 800, losses: 0 });
     expect(own().player.z).toBe(-12);
     expect(enemy().player.z).toBe(-16);
     expect(latest!.round!.score).toEqual({ Alpha: 1, Bravo: 0 });

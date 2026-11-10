@@ -189,6 +189,12 @@ test("two browsers plant, cancel and complete a defuse with replicated progress"
     await expect(first.getByLabel("Round status")).toContainText("Round 2", {
       timeout: 8000,
     });
+    await expect(first.getByLabel("Money", { exact: true })).toHaveText(
+      "$2500",
+    );
+    await expect(second.getByLabel("Money", { exact: true })).toHaveText(
+      "$4350",
+    );
     expect(errors).toEqual([]);
   } finally {
     await a.close();

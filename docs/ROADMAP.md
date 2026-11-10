@@ -62,13 +62,13 @@ Deliverable: Players can finish an entire round-based match.
 
 ## Phase 5 — Economy and inventory
 
-- [ ] Implement earning and spending money.
-- [ ] Create buy menu.
-- [ ] Add weapon purchasing.
+- [x] Implement earning and spending money in the two-player round mode.
+- [x] Create buy menu for implemented equipment (AR30 rifle and owned pistol).
+- [x] Add server-validated AR30 purchasing and same-freeze refunds. Expanded arsenal remains outstanding.
 - [ ] Add armor.
 - [ ] Add weapon dropping and pickup.
-- [ ] Add freeze-time purchases.
-- [ ] Implement economy rewards.
+- [x] Add freeze-time purchases with deadline, spawn-zone and alive-state checks.
+- [x] Implement capped win/loss, weapon kill and plant/defuse rewards.
 
 Deliverable: Complete tactical round economy.
 
@@ -163,3 +163,11 @@ Deliverable: A browser-accessible multiplayer game.
 
 - Spectator verification: 41 unit tests and all 23 Chrome browser/integration tests pass. Browser checks exercise live objective and opponent updates, all fixed camera selections, disabled dead-player controls, automatic player-camera restoration, pointer-lock behavior and cleanup. Reviewed the overview screenshot and widened framing to include the near spawn. Formatting, lint, strict TypeScript and production build pass; the existing Babylon bundle-size warning remains. Cross-browser and internet spectator play remain unverified.
 - Phase 4 is complete for the initial two-player test mode. Larger-team spectator restrictions and the broader competitive map/team work remain outstanding as noted above. Next slice: Phase 5 server-authoritative currency and buy flow.
+
+- Phase 5 first slice: $800 starting balance, $16000 cap, $3250 wins, escalating $1400-$3400 losses, $300 weapon kill rewards and $300 personal plant/defuse rewards. Shared settings own balance values. The server credits events once, rejects forged/stale purchases, and enforces funds, ownership, freeze deadlines and spawn buy zones.
+- Added B-key buy menu, money HUD, AR30 purchase for $2700 and same-freeze full refunds. Both teams start with a pistol; survivors retain owned rifles with refilled ammo while death removes them at the next round. Halftime and aborted matches reset economy/equipment. Training retains both weapons.
+- Phase 5 remains incomplete: armor, defuse kits, utility, weapon dropping/pickup and broader arsenal buying remain outstanding. Team-restricted money replication and competitive balance tuning are also future work.
+
+- Economy verification: 45 unit tests and all 25 Chrome browser/integration tests pass. Real-server checks cover earned balances, insufficient funds, forged/stale requests, duplicate buys/refunds, unowned switches, survivor retention, death loss and disconnect resets. Browser checks cover B/Escape, purchase/refund confirmations, automatic close at round start and firing the purchased rifle. Existing objective tests verify plant/defuse payouts, halftime tests verify economy resets, and movement/jump regressions remain passing.
+- Reviewed the buy-menu screenshot and corrected text encoding and spacing so all controls fit at the tested desktop size. The browser purchase test waits for mouse capture before issuing weapon input. Formatting, lint, strict TypeScript and production build pass. The existing Babylon bundle warning remains; cross-browser, internet economy play and competitive balance remain unverified.
+- Next Phase 5 slice: purchasable armor with server-authoritative damage reduction, followed by defuse kits and weapon dropping/pickup.

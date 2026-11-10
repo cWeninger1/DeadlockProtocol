@@ -1,3 +1,4 @@
+import { buyRestriction, type EconomyState } from "@dp/game-config";
 import { spectatorPose, type SpectatorView } from "./spectator";
 import { createObjectiveAudio } from "./objectiveAudio";
 import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
@@ -46,6 +47,13 @@ import {
 } from "@dp/game-config";
 
 export type RangeHud = {
+  economy?: EconomyState & {
+    ownsRifle: boolean;
+    restriction: string | null;
+    epoch: number;
+    life: number;
+  };
+
   spectator: string | null;
   objective: string;
   objectiveProgress: number;
@@ -291,6 +299,7 @@ export function startRange(
     lastShot = -100;
   let firePressed = false,
     reloadPressed = false;
+  let economy: RangeHud["economy"];
   let combat: CombatState | undefined;
   let round: RoundState | undefined;
   let aliveAttackers = 0,
@@ -302,6 +311,7 @@ export function startRange(
   let objectiveProgress = 0;
   const reportHud = () => {
     const hud: RangeHud = {
+      economy,
       spectator:
         spectatorPose(round, vitals.health, getSpectatorView())?.label ?? null,
       objective: objectiveHint,
@@ -416,6 +426,22 @@ export function startRange(
           const local = snapshot.players.find((p) => p.id === room?.sessionId);
           if (local) {
             squad = local.squad;
+            economy =
+              local.economy && local.combat && round
+                ? {
+                    ...local.economy,
+                    ownsRifle: local.combat.loadout.owned.includes("rifle"),
+                    restriction: buyRestriction(
+                      round,
+                      snapshot.tick,
+                      local.combat.health,
+                      local.combat.team,
+                      local.player,
+                    ),
+                    epoch: round.epoch,
+                    life: local.combat.life,
+                  }
+                : undefined;
             objectiveProgress = 0;
             objectiveHint = "";
             if (round && objective) {

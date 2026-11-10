@@ -1,4 +1,5 @@
 import type {
+  EconomyState,
   Squad,
   RoundState,
   Intent,
@@ -38,6 +39,7 @@ export type InputMessage = Intent & {
   combat?: CombatInput;
 };
 export type PlayerSnapshot = {
+  economy?: EconomyState;
   squad?: Squad;
   id: string;
   player: Player;
@@ -102,5 +104,25 @@ function isCombatInput(value: unknown): value is CombatInput {
     (c.weapon === null || c.weapon === "pistol" || c.weapon === "rifle") &&
     Number.isSafeInteger(c.life) &&
     Number(c.life) >= 0
+  );
+}
+
+export type BuyRequest = {
+  action: "buy" | "refund";
+  item: "rifle";
+  epoch: number;
+  life: number;
+};
+export function isBuyRequest(value: unknown): value is BuyRequest {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return (
+    Object.keys(v).length === 4 &&
+    (v.action === "buy" || v.action === "refund") &&
+    v.item === "rifle" &&
+    Number.isSafeInteger(v.epoch) &&
+    Number(v.epoch) >= 0 &&
+    Number.isSafeInteger(v.life) &&
+    Number(v.life) >= 0
   );
 }

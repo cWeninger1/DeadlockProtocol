@@ -48,3 +48,11 @@ The client receives the match format and final winner in snapshots, stops predic
 The pure spectatorPose helper selects a camera position, target and label only for dead players during active, planted or ending phases. Babylon applies the pose after its normal player-camera update. React owns the camera selection through a ref read by the existing scene; changing views does not recreate the engine or network connection. Labels update from snapshots, while the scene continues rendering remote interpolation.
 
 No spectator messages or authoritative state changes are introduced. Existing dead-player server gates reject gameplay; the client sends idle controls. New-life handling resets prediction, eye height and camera rotation before restoring normal play. Navigation uses the same scene/engine, listener, network and audio disposal path. Finished-match UI takes priority over spectator controls.
+
+## Economy and ownership
+
+The shared economy module defines currency, reward progression, buy eligibility and atomic rifle purchase/refund transitions. Loadout.owned is the authority for weapon switching; the fixed ammunition records do not imply ownership. Local/free-respawn training defaults to both weapons, while round players start with pistol ownership.
+
+Round members hold optional serializable economy state in server memory. Kill credit occurs only on the health-to-zero transition; objective credit occurs only on the unplanted-to-planted or not-defused-to-defused edge. Round credits occur only on entering ending. New freezes preserve surviving ownership while resetting health and ammunition; halftime/waiting reset economy and ownership. No currency is persisted or written to Firestore.
+
+Buy requests include action, item, phase epoch and life generation. The server validates the schema, current phase/deadline, health, spawn distance, funds and ownership before replacing economy/loadout together. Snapshot HUD state drives a React native modal with keyboard/focus containment. B releases pointer lock; closing the menu offers the existing Resume flow. The menu closes when buying becomes unavailable. No new per-frame React updates or simulation scheduling are introduced.

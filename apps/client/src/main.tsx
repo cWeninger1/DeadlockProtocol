@@ -1,3 +1,4 @@
+import { BuyMenu } from "./BuyMenu";
 import {
   spectatorViews,
   spectatorViewLabels,
@@ -149,6 +150,13 @@ function Range({
             />
           )}
         </aside>
+      )}
+      {hud?.economy && (
+        <BuyMenu
+          economy={hud.economy}
+          room={roomRef.current}
+          connected={networkStatus.connected}
+        />
       )}
       <canvas ref={canvas} aria-label="Foundry 3D range" />
       {finished && hud?.round ? (
