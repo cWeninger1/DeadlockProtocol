@@ -124,7 +124,7 @@ it("planting replaces the round clock, and elimination after planting does not s
     phase: "ending",
     winner: "Attackers",
     reason: "detonated",
-    score: { Attackers: 1, Defenders: 0 },
+    score: { Alpha: 1, Bravo: 0 },
   });
 });
 it("defuse awards one point; explosion wins an exact deadline tie; reset clears the device", () => {
@@ -137,7 +137,7 @@ it("defuse awards one point; explosion wins an exact deadline tie; reset clears 
   expect(end).toMatchObject({
     winner: "Defenders",
     reason: "defused",
-    score: { Attackers: 0, Defenders: 1 },
+    score: { Alpha: 0, Bravo: 1 },
   });
   expect(advanceRound(end, state.endsAt!, roster)).toBe(end);
   expect(advanceRound(defused, state.endsAt!, roster).reason).toBe("detonated");

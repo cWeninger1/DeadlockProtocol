@@ -33,6 +33,7 @@ function Range({
   const [ready, setReady] = useState(false);
   const [locked, setLocked] = useState(false);
   const [error, setError] = useState("");
+  const finished = hud?.round?.finished === true;
   const dead = hud?.health === 0;
   useEffect(() => {
     setReady(false);
@@ -108,14 +109,20 @@ function Range({
           </strong>
           <span aria-label="Round timer">
             {hud.round.seconds === null
-              ? "Join with a second player"
+              ? finished
+                ? "Final score"
+                : "Join with a second player"
               : Math.floor(hud.round.seconds / 60) +
                 ":" +
                 String(hud.round.seconds % 60).padStart(2, "0")}
           </span>
           <span aria-label="Team score">
-            Attackers {hud.round.attackers} : {hud.round.defenders} Defenders
+            Alpha {hud.round.alpha} : {hud.round.bravo} Bravo
           </span>
+          <small>
+            Alpha: {hud.round.alphaSide} / Bravo: {hud.round.bravoSide}
+          </small>
+          <small>{hud.round.format}</small>
           <small>
             Alive: {hud.round.aliveAttackers} attackers /{" "}
             {hud.round.aliveDefenders} defenders
@@ -136,7 +143,20 @@ function Range({
         </aside>
       )}
       <canvas ref={canvas} aria-label="Foundry 3D range" />
-      {locked && !dead ? (
+      {finished && hud?.round ? (
+        <section className="pause" aria-label="Match results">
+          <small>FOUNDRY / MATCH COMPLETE</small>
+          <h2>{hud.round.matchResult}</h2>
+          <p>
+            Alpha {hud.round.alpha} : {hud.round.bravo} Bravo
+          </p>
+          <p>
+            You played for {hud.squad}. Kills {hud.kills} / Deaths {hud.deaths}{" "}
+            / Hits {hud.hits}
+          </p>
+          <button onClick={leave}>Main menu</button>
+        </section>
+      ) : locked && !dead ? (
         <>
           <span className="reticle" aria-hidden="true">
             +
@@ -151,7 +171,9 @@ function Range({
               </strong>
               <span>
                 {multiplayer
-                  ? hud.team
+                  ? rounds
+                    ? hud.squad + " / " + hud.team
+                    : hud.team
                   : hud.inHazard
                     ? "HAZARD - leave the striped area"
                     : "Damage test area: left of spawn"}
@@ -196,7 +218,7 @@ function Range({
           {multiplayer && (
             <p>
               {rounds
-                ? "Attackers: carry the objective to Site A or B and hold E for 5 seconds. Defenders: hold E near the planted device for 10 seconds. Stay still during actions. Detonation takes 40 seconds. Automatic respawn next round."
+                ? "Attackers: carry the objective to Site A or B and hold E for 5 seconds. Defenders: hold E near the planted device for 10 seconds. Stay still during actions. Detonation takes 40 seconds. Automatic respawn next round. The match format is shown above. Teams switch sides at halftime; a tied regulation score is a draw."
                 : "Two-player combat range. Join from a second browser to fight."}
               Orange: Attackers. Teal: Defenders.
             </p>

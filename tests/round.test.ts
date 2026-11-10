@@ -11,6 +11,7 @@ const roster: RoundPlayer[] = [
   { team: "Defenders", health: 100 },
 ];
 const rules = {
+  ...roundRules,
   warmupTicks: 5,
   freezeTicks: 20,
   activeTicks: 115,
@@ -48,7 +49,7 @@ it("awards elimination only once and starts the next round with preserved team s
     phase: "ending",
     winner: "Attackers",
     reason: "elimination",
-    score: { Attackers: 1, Defenders: 0 },
+    score: { Alpha: 1, Bravo: 0 },
   });
   expect(advanceRound(ending, 31, dead, rules)).toBe(ending);
   expect(advanceRound(ending, 35, dead, rules)).toMatchObject({
@@ -90,7 +91,7 @@ it("aborts to waiting without awarding a point when either team disconnects", ()
     expect(waiting).toMatchObject({
       phase: "waiting",
       number: 0,
-      score: { Attackers: 0, Defenders: 0 },
+      score: { Alpha: 0, Bravo: 0 },
       epoch: state.epoch + 1,
     });
     expect(advanceRound(waiting, 142, roster, rules).phase).toBe("warmup");

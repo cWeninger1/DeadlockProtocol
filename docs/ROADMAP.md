@@ -49,7 +49,7 @@ Deliverable: Two or more players can fight in the browser over a network.
 
 ## Phase 4 — Competitive match loop
 
-- [ ] Implement all round states. Waiting, warmup, freeze, active, objective-planted and ending are implemented; halftime and match-finished remain.
+- [x] Implement all round states, including halftime and match-finished.
 - [x] Add attacker and defender teams.
 - [x] Create objective sites.
 - [x] Implement planting and standard defusing. Purchased defuse kits belong to the economy phase.
@@ -150,3 +150,10 @@ Deliverable: A browser-accessible multiplayer game.
 
 - Objective verification: 34 unit tests and all 19 Chrome browser/integration tests pass. The server test waits through the real 40-second fuse after attacker death; the two-browser flow verifies canceled/restarted planting and defusing, shared progress, defender score and next-round reset. Existing jump/movement regressions pass. Formatting, lint, strict TypeScript and production build pass. The initial browser run exposed a dependency-optimizer reload on first join; explicit Vite scene scanning fixed it, and the full suite passes with forced fresh optimization. The existing bundle-size warning remains. Audio quality, cross-browser behavior and internet objective play remain unverified.
 - Next Phase 4 slice: halftime, team-side switching and full match completion/tie rules, followed by spectator mode.
+
+- Phase 4 match progression slice: stable Alpha/Bravo squad scores, 12 rounds per half, first to 13 and a regulation 12-12 draw. A ten-second halftime swaps attacker/defender roles once, resets health/loadouts/spawns, preserves personal stats and assigns the objective to the new attacker at the next freeze. The HUD shows squad scores, roles and match format.
+- Match-finished is terminal: combat, movement, objective actions and respawn stay blocked. The client releases the mouse and shows winner/draw, final score and personal kills/deaths/hits with Main menu navigation. Completed rooms stop accepting new players and preserve results if someone leaves. Mid-match disconnects retain the existing abort-to-waiting policy, resetting side assignment and team scores.
+- Phase 4 remains open for spectator mode. Overtime, larger teams, reconnect/forfeit policy, account-backed match history, MVP/XP awards and full tactical map balancing remain later work.
+
+- Match verification: 39 unit tests and all 21 Chrome browser/integration tests pass. Default-length 13-win and 24-round draw histories are covered by deterministic tests. Shortened server-owned match tests verify halftime roles/spawns/life reset, objective reassignment, score/stat preservation, blocked halftime/finished input, finished-room matchmaking exclusion, mouse release and both clients' result screens. Existing full-duration objectives and movement smoothness regressions pass. Formatting, lint, strict TypeScript and production build pass; the existing Babylon bundle warning remains. A complete regulation-length browser match, cross-browser behavior and internet play remain unverified.
+- Next Phase 4 slice: spectator mode for eliminated players. Phase 4 remains open until that behavior is implemented and tested.

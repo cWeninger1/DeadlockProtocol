@@ -57,7 +57,7 @@ test("round server enforces freeze, elimination, automatic resets and disconnect
     await expect.poll(() => latest?.round?.phase).toBe("ending");
     expect(latest!.round).toMatchObject({
       winner: "Attackers",
-      score: { Attackers: 1, Defenders: 0 },
+      score: { Alpha: 1, Bravo: 0 },
     });
     const deadLife = enemy().combat!.life;
     b.send("respawn");
@@ -68,14 +68,14 @@ test("round server enforces freeze, elimination, automatic resets and disconnect
     expect(own().combat!.shots).toBe(4);
     await expect.poll(() => latest?.round?.number, { timeout: 8000 }).toBe(2);
     expect(latest!.round!.phase).toBe("freeze");
-    expect(latest!.round!.score.Attackers).toBe(1);
+    expect(latest!.round!.score.Alpha).toBe(1);
     expect(enemy().combat!.health).toBe(100);
     expect(enemy().combat!.life).toBe(deadLife + 1);
     expect(own().combat!.loadout.inventory.pistol.magazine).toBe(12);
     expect(own().combat!.kills).toBe(1);
     await b.leave();
     await expect.poll(() => latest?.round?.phase).toBe("waiting");
-    expect(latest!.round!.score).toEqual({ Attackers: 0, Defenders: 0 });
+    expect(latest!.round!.score).toEqual({ Alpha: 0, Bravo: 0 });
     const replacement = await client.joinOrCreate(ROUND_ROOM);
     replacement.onMessage<Snapshot>("snapshot", () => {});
     await expect.poll(() => latest?.round?.phase).toBe("warmup");
@@ -141,7 +141,7 @@ test("two browsers show timed rounds, block freeze input and reset after elimina
       second.getByRole("button", { name: "Respawn", exact: true }),
     ).toHaveCount(0);
     await expect(second.getByLabel("Team score")).toHaveText(
-      "Attackers 1 : 0 Defenders",
+      "Alpha 1 : 0 Bravo",
     );
     await expect(first.getByLabel("Round status")).toContainText("Round 2", {
       timeout: 8000,

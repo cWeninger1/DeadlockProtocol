@@ -16,7 +16,7 @@ The red striped area to the left of spawn deals 25 damage every half second whil
 
 A separate two-player mode runs waiting, warmup (5 seconds), freeze (20 seconds), active (115 seconds) and ending (5 seconds). Movement and weapons are enabled during active and planted play. Before planting, elimination wins for the surviving team; an unplanted timeout wins for defenders. The server deadline takes priority on the expiry tick. Team score increments once per completed round.
 
-Each freeze restores both players to their team spawns with 100 HP, full pistol/rifle ammunition and zero recoil. Kills/deaths persist. Manual respawn is unavailable, and dead players see a waiting message until the next freeze. Both teams are required: a departure aborts the sequence, clears team scores and waits for a replacement. The current mode repeats rounds indefinitely. Halftime, match completion and spectator cameras remain outstanding.
+Each freeze restores both players to their team spawns with 100 HP, full pistol/rifle ammunition and zero recoil. Kills/deaths persist. Manual respawn is unavailable, and dead players see a waiting message until the next freeze. Both teams are required: a departure aborts the sequence, clears team scores and waits for a replacement. The mode now completes regulation matches; spectator cameras remain outstanding.
 
 ## Objectives
 
@@ -25,3 +25,11 @@ Round tests now include Site A at (8, -16) and Site B at (-10, 8). Shared site g
 Defenders within two metres of the device hold E for ten seconds to defuse. Action progress resets on release, movement, leaving range, death or expired input. Planting replaces the active clock with a 40-second fuse. After planting, player eliminations do not end the round: defenders must defuse or attackers win on expiry. The deadline takes priority over an action completing on that tick. Scores update once and objective state resets next round. A team disconnect still aborts the test round.
 
 Simple original Web Audio tones announce planting, defuse and detonation after the browser has received a gameplay gesture. Muted/suspended browsers retain visual feedback. Purchased defuse kits, larger-team carrier dropping/pickup, blast damage and polished sound/impact effects are future work.
+
+## Match progression
+
+Alpha and Bravo are permanent squad identities. Alpha starts attacking and Bravo defending. After 12 completed rounds a ten-second halftime swaps their sides, spawn positions and objective eligibility. Scores and individual kills/deaths/hits stay with their squads/players; health, ammunition and recoil reset. A normal freeze precedes round 13.
+
+First squad to 13 wins. If regulation ends 12-12 after round 24, the match is a draw; overtime is not enabled. Shared rule values define the half length, win threshold and halftime duration. On completion, play stops and a result screen displays winner/draw, final squad scores and personal stats. Players return to the menu to join another room.
+
+A departure before completion aborts the current match and clears team scores, returning the remaining player to the initial side assignment. A departure after completion preserves the final result. Finished rooms are locked against matchmaking joins.

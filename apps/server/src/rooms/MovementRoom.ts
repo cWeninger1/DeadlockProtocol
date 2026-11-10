@@ -1,5 +1,8 @@
 import { Room, type Client } from "@colyseus/core";
 import {
+  roundRules,
+  sideForSquad,
+  type Squad,
   advanceObjective,
   createObjective,
   advanceRound,
@@ -27,6 +30,7 @@ import {
 } from "@dp/protocol";
 
 type Member = {
+  squad: Squad;
   player: Player;
   combat: CombatState;
   yaw: number;
@@ -41,6 +45,7 @@ export class MovementRoom extends Room {
   maxClients = 2;
   maxMessagesPerSecond = 180;
   protected round: RoundState | undefined;
+  protected rules = roundRules;
   private tick = 0;
   private elapsed = 0;
   private members = new Map<string, Member>();
@@ -199,6 +204,7 @@ export class MovementRoom extends Room {
         ...(this.round ? { round: this.round } : {}),
         players: Array.from(this.members, ([id, m]) => ({
           id,
+          squad: m.squad,
           player: m.player,
           yaw: m.yaw,
           combat: m.combat,
@@ -230,9 +236,13 @@ export class MovementRoom extends Room {
       this.round,
       this.tick,
       Array.from(this.members.values(), (m) => m.combat),
+      this.rules,
     );
     if (next === this.round) return;
     this.round = next;
+    if (next.phase === "finished") void this.lock();
+    for (const m of this.members.values())
+      m.combat.team = sideForSquad(m.squad, next.swapped);
     if (next.phase === "freeze")
       this.round = {
         ...next,
@@ -247,7 +257,11 @@ export class MovementRoom extends Room {
       m.queue = [];
       m.acknowledged = m.input.sequence;
       m.player = { ...m.player, vx: 0, vy: 0, vz: 0 };
-      if (next.phase === "freeze" || next.phase === "waiting")
+      if (
+        next.phase === "freeze" ||
+        next.phase === "waiting" ||
+        next.phase === "halftime"
+      )
         this.resetMember(m);
     }
   }
@@ -255,12 +269,14 @@ export class MovementRoom extends Room {
     return { ...spawnPlayer(), x: 2, z: team === "Attackers" ? -16 : -12 };
   }
   onJoin(client: Client) {
-    const team: Team = Array.from(this.members.values()).some(
-      (m) => m.combat.team === "Attackers",
+    const squad: Squad = Array.from(this.members.values()).some(
+      (m) => m.squad === "Alpha",
     )
-      ? "Defenders"
-      : "Attackers";
+      ? "Bravo"
+      : "Alpha";
+    const team = sideForSquad(squad, this.round?.swapped ?? false);
     this.members.set(client.sessionId, {
+      squad,
       player: this.spawn(team),
       combat: createCombat(team),
       yaw: team === "Attackers" ? 0 : Math.PI,

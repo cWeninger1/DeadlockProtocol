@@ -6,7 +6,7 @@ import { FOUNDATION_ROOM, MOVEMENT_ROOM, ROUND_ROOM } from "@dp/protocol";
 class FoundationRoom extends Room {
   maxClients = 2;
 }
-const server = new Server({ transport: new WebSocketTransport() });
+export const server = new Server({ transport: new WebSocketTransport() });
 server.router = createRouter({
   health: createEndpoint("/health", { method: "GET" }, async () => ({
     status: "ok",

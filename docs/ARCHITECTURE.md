@@ -25,7 +25,7 @@ RoundRoom extends the existing authoritative simulation with optional round stat
 
 Round input includes a nonnegative phase epoch. The server consumes and acknowledges blocked input without executing it, clears queues at each transition and rejects commands from previous epochs. Active and planted rounds allow movement and weapon actions. Manual respawn is rejected. Each new life increments the existing life ID; the client clears prediction and held controls at phase/life boundaries. Remote interpolation avoids blending positions from different lives.
 
-Snapshots carry round state alongside player state. Babylon derives whole-second timer and alive-count updates for React's round HUD; it does not rerender React every frame. Losing either team aborts into waiting and resets team scores, without awarding a disconnect win. Individual statistics remain session-scoped. Full match progression and reconnection are later slices.
+Snapshots carry round state alongside player state. Babylon derives whole-second timer and alive-count updates for React's round HUD; it does not rerender React every frame. Losing either team aborts into waiting and resets team scores, without awarding a disconnect win. Individual statistics remain session-scoped. Reconnection remains a later slice.
 
 ## Objective simulation
 
@@ -34,3 +34,11 @@ packages/game-config/objective.ts contains serializable carrier, planted positio
 The room resolves movement and combat before advancing objective actions, so death cancels a same-tick plant/defuse. Active/planted phases permit play. Successful planting transitions the pure round state to planted and replaces its deadline with the configured fuse. Planted rounds ignore elimination, and expiration is checked before actions, making exact-deadline ties deterministic. Round transitions clear queued/held interaction and new freezes recreate objective state.
 
 Babylon draws shared site markings, procedural labels and the replicated device. React receives context prompts and quantized action progress from snapshots. Objective audio uses disposable Web Audio nodes and an AudioContext closed on navigation; no external media assets are used.
+
+## Match identity and completion
+
+RoundState stores scores by stable squad ID (Alpha/Bravo), separate from the current attacker/defender role in CombatState. Shared sideForSquad/squadForSide functions map roles using the swapped flag. Both elimination/timeout and objective awards credit the same squad after halftime. Each member retains its squad across resets, and snapshots expose that identity.
+
+The pure round transition enters halftime after the first half, then freeze for the next numbered round. The room applies role changes and respawns once per epoch transition. A fresh freeze assigns the objective after roles have changed. Reaching the win threshold or regulation limit enters a terminal finished state after the last result display; a tied limit is a draw. The finished state is checked before missing-team handling, preserving completed results through disconnects. Colyseus locks finished rooms against new joins.
+
+The client receives the match format and final winner in snapshots, stops prediction/input under the existing phase gates and exits pointer lock. React renders final score and personal statistics. Production starts only the normal rooms. Playwright uses tests/server.ts to add a shortened match room with server-owned rules; it is never imported by the production entry point.

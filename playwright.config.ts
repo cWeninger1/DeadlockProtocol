@@ -17,7 +17,7 @@ export default defineConfig({
       timeout: 60000,
     },
     {
-      command: "npm run start -w @dp/server",
+      command: "npx tsx tests/server.ts",
       env: { PORT: "2568" },
       url: "http://127.0.0.1:2568/health",
       timeout: 60000,

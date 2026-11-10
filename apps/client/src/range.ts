@@ -21,6 +21,7 @@ import {
   objectiveSites,
   objectiveRules,
   siteAt,
+  sideForSquad,
   roundLabels,
   type RoundState,
   combatRules,
@@ -51,13 +52,19 @@ export type RangeHud = {
     number: number;
     seconds: number | null;
     result: string;
-    attackers: number;
-    defenders: number;
+    alpha: number;
+    bravo: number;
+    alphaSide: string;
+    bravoSide: string;
+    format: string;
+    finished: boolean;
+    matchResult: string;
     aliveAttackers: number;
     aliveDefenders: number;
   };
   health: number;
   team?: string;
+  squad?: string;
   kills: number;
   deaths: number;
   respawnReady: boolean;
@@ -145,7 +152,7 @@ export function startRange(
         ochre,
       );
   }
-  if (room?.name === ROUND_ROOM) {
+  if (room?.name.startsWith(ROUND_ROOM)) {
     for (const site of objectiveSites) {
       const paint = material(
         "site " + site.id,
@@ -284,6 +291,7 @@ export function startRange(
   let round: RoundState | undefined;
   let aliveAttackers = 0,
     aliveDefenders = 0;
+  let squad: string | undefined;
   let serverTick = 0;
   let lastHud = "";
   let objectiveHint = "";
@@ -308,14 +316,30 @@ export function startRange(
                 " win - " +
                 (round.reason === "timeout" ? "time expired" : round.reason)
               : "",
-            attackers: round.score.Attackers,
-            defenders: round.score.Defenders,
+            alpha: round.score.Alpha,
+            bravo: round.score.Bravo,
+            alphaSide: sideForSquad("Alpha", round.swapped),
+            bravoSide: sideForSquad("Bravo", round.swapped),
+            format:
+              "First to " +
+              round.format.roundsToWin +
+              " / " +
+              round.format.roundsPerHalf +
+              " rounds per half",
+            finished: round.phase === "finished",
+            matchResult:
+              round.matchWinner === "draw"
+                ? "Match drawn"
+                : round.matchWinner
+                  ? round.matchWinner + " wins the match"
+                  : "",
             aliveAttackers,
             aliveDefenders,
           }
         : undefined,
       health: vitals.health,
       team: combat?.team,
+      squad,
       kills: combat?.kills ?? 0,
       deaths: combat?.deaths ?? 0,
       respawnReady:
@@ -361,6 +385,11 @@ export function startRange(
             (round.reason === "defused" || round.reason === "detonated")
           )
             audio.cue(round.reason);
+          if (
+            round?.phase === "finished" &&
+            document.pointerLockElement === canvas
+          )
+            document.exitPointerLock();
           const objective = round?.objective;
           device.setEnabled(!!objective?.position);
           if (objective?.position)
@@ -380,6 +409,7 @@ export function startRange(
           if (snapshotBuffer.length > 20) snapshotBuffer.shift();
           const local = snapshot.players.find((p) => p.id === room?.sessionId);
           if (local) {
+            squad = local.squad;
             objectiveProgress = 0;
             objectiveHint = "";
             if (round && objective) {

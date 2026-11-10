@@ -1,4 +1,5 @@
 import type {
+  Squad,
   RoundState,
   Intent,
   Player,
@@ -37,6 +38,7 @@ export type InputMessage = Intent & {
   combat?: CombatInput;
 };
 export type PlayerSnapshot = {
+  squad?: Squad;
   id: string;
   player: Player;
   yaw: number;

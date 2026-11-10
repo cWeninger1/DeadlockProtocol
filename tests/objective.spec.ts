@@ -89,7 +89,7 @@ test("server expires stale interaction and detonates after the carrier dies", as
     expect(latest!.round).toMatchObject({
       winner: "Attackers",
       reason: "detonated",
-      score: { Attackers: 1, Defenders: 0 },
+      score: { Alpha: 1, Bravo: 0 },
     });
     await expect
       .poll(() => latest?.round?.phase, { timeout: 8000 })
@@ -184,7 +184,7 @@ test("two browsers plant, cancel and complete a defuse with replicated progress"
     );
     await second.keyboard.up("e");
     await expect(first.getByLabel("Team score")).toHaveText(
-      "Attackers 0 : 1 Defenders",
+      "Alpha 0 : 1 Bravo",
     );
     await expect(first.getByLabel("Round status")).toContainText("Round 2", {
       timeout: 8000,
