@@ -42,3 +42,17 @@ class EconomyTestRoom extends RoundRoom {
   protected round = createRound(0, this.rules);
 }
 server.define("foundry-rounds-economy", EconomyTestRoom);
+
+class ArmorTestRoom extends RoundRoom {
+  protected rules = {
+    ...roundRules,
+    warmupTicks: 60,
+    freezeTicks: 600,
+    endingTicks: 60,
+    halftimeTicks: 180,
+    roundsPerHalf: 2,
+    roundsToWin: 3,
+  };
+  protected round = createRound(0, this.rules);
+}
+server.define("foundry-rounds-armor", ArmorTestRoom);

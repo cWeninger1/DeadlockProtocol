@@ -109,7 +109,7 @@ function isCombatInput(value: unknown): value is CombatInput {
 
 export type BuyRequest = {
   action: "buy" | "refund";
-  item: "rifle";
+  item: "rifle" | "armor";
   epoch: number;
   life: number;
 };
@@ -119,7 +119,7 @@ export function isBuyRequest(value: unknown): value is BuyRequest {
   return (
     Object.keys(v).length === 4 &&
     (v.action === "buy" || v.action === "refund") &&
-    v.item === "rifle" &&
+    (v.item === "rifle" || v.item === "armor") &&
     Number.isSafeInteger(v.epoch) &&
     Number(v.epoch) >= 0 &&
     Number.isSafeInteger(v.life) &&

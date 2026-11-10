@@ -63,9 +63,9 @@ Deliverable: Players can finish an entire round-based match.
 ## Phase 5 — Economy and inventory
 
 - [x] Implement earning and spending money in the two-player round mode.
-- [x] Create buy menu for implemented equipment (AR30 rifle and owned pistol).
+- [x] Create buy menu for implemented equipment (AR30 rifle, armor and owned pistol).
 - [x] Add server-validated AR30 purchasing and same-freeze refunds. Expanded arsenal remains outstanding.
-- [ ] Add armor.
+- [x] Add purchasable armor, weapon penetration, depletion and survivor carryover.
 - [ ] Add weapon dropping and pickup.
 - [x] Add freeze-time purchases with deadline, spawn-zone and alive-state checks.
 - [x] Implement capped win/loss, weapon kill and plant/defuse rewards.
@@ -171,3 +171,10 @@ Deliverable: A browser-accessible multiplayer game.
 - Economy verification: 45 unit tests and all 25 Chrome browser/integration tests pass. Real-server checks cover earned balances, insufficient funds, forged/stale requests, duplicate buys/refunds, unowned switches, survivor retention, death loss and disconnect resets. Browser checks cover B/Escape, purchase/refund confirmations, automatic close at round start and firing the purchased rifle. Existing objective tests verify plant/defuse payouts, halftime tests verify economy resets, and movement/jump regressions remain passing.
 - Reviewed the buy-menu screenshot and corrected text encoding and spacing so all controls fit at the tested desktop size. The browser purchase test waits for mouse capture before issuing weapon input. Formatting, lint, strict TypeScript and production build pass. The existing Babylon bundle warning remains; cross-browser, internet economy play and competitive balance remain unverified.
 - Next Phase 5 slice: purchasable armor with server-authoritative damage reduction, followed by defuse kits and weapon dropping/pickup.
+
+- Phase 5 armor slice: both teams can buy 100 armor for $650 through the existing freeze/spawn gates. Shared weapon penetration determines health damage and armor depletion. Survivors retain remaining points; death, halftime and aborted matches remove armor. The HUD shows protection and the buy menu includes an armor card.
+- Armor top-ups cost the full price. Same-freeze refunds restore both money and the previous armor amount; duplicate/full purchases and stale/damaged refunds are rejected. Regional hitboxes, helmet rules, kits, utility and weapon dropping/pickup remain outstanding. Phase 5 remains open.
+
+- Armor verification: 48 unit tests and all 27 Chrome browser/integration tests pass. Server tests verify purchases/refunds, forged-field rejection, full-armor duplicate rejection, blocked active-round refunds, pistol damage/depletion, death loss, survivor carryover, topping-up/refund restoration and halftime resets. Browser tests verify money/protection text, visible Close control, the in-game armor HUD, actual damage and next-round carryover. Existing rifle, economy, objective, spectator and movement/jump checks pass.
+- Formatting, lint, strict TypeScript and production build pass. Reviewed the two-column desktop buy menu. The existing Babylon bundle-size warning remains. Cross-browser armor behavior, internet play, regional protection and competitive balance remain unverified.
+- Next Phase 5 slice: purchasable defender-only defuse kits that reduce the authoritative defuse duration from ten to five seconds.

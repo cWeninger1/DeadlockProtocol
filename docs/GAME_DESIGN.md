@@ -46,4 +46,12 @@ The round test starts each half with $800 and a free F12 pistol. Currency caps a
 
 Both sides can buy the AR30 for $2700 during freeze time within three metres of their own spawn. Freeze duration is the buy timer. Refunds return the full price only for a rifle bought during that same freeze. A single primary slot prevents duplicate purchases. Pistol ownership is permanent. Surviving rifles carry into the next round with replenished ammunition; death removes the rifle at the next reset. Halftime and aborted matches reset currency, loss streaks and equipment. These are centralized initial balance rules, not final competitive tuning.
 
-Armor, defuse kits, utilities, additional purchasable weapons and dropped weapon pickup remain outstanding. The initial menu lists only implemented equipment.
+Defuse kits, utilities, additional purchasable weapons and dropped weapon pickup remain outstanding. The initial menu lists only implemented equipment.
+
+## Armor
+
+Both teams may buy armor for $650 during the same freeze-time/spawn-zone window as weapons. It fills protection to 100 points. Buying at full protection is rejected; topping up partially damaged armor costs the full price. A same-freeze refund returns $650 and the exact armor amount held before that purchase. Armor carried from a prior round cannot be refunded.
+
+Weapon penetration is the fraction of base damage that bypasses armor, rounded up. The remaining damage can be absorbed at one armor point per damage point, limited by the armor available. Initial pistol penetration is 0.5 (13 health damage and 12 armor consumed from a 25-damage hit); rifle penetration is 0.7 (24 health damage and 10 armor consumed from a 34-damage hit). Depleted armor permits full damage. Health never drops below zero.
+
+Survivors keep remaining armor without a free refill. Dead players return with zero armor. Halftime and aborted matches clear armor. The current body-box hit model uses armor for all firearm hits; separate helmet/head/limb rules and regional hitboxes remain future work. Training modes remain unarmored.

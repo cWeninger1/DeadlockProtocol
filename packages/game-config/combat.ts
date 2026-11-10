@@ -4,6 +4,7 @@ import { createLoadout, type Loadout } from "./weapon";
 
 export type Team = "Attackers" | "Defenders";
 export type CombatState = {
+  armor: number;
   health: number;
   team: Team;
   loadout: Loadout;
@@ -22,6 +23,7 @@ export function createCombat(team: Team): CombatState {
   return {
     team,
     health: 100,
+    armor: 0,
     loadout: createLoadout(),
     life: 0,
     shots: 0,

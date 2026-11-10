@@ -1,5 +1,7 @@
 import { Room, type Client } from "@colyseus/core";
 import {
+  applyArmorDamage,
+  tradeArmor,
   buyRestriction,
   createEconomy,
   credit,
@@ -75,7 +77,19 @@ export class MovementRoom extends Room {
           m.combat.team,
           m.player,
         );
-        if (!error) {
+        if (!error && value.item === "armor") {
+          const result = tradeArmor(
+            m.economy,
+            m.combat.armor,
+            value.epoch,
+            value.action,
+          );
+          if (result.error) error = result.error;
+          else if (result.economy && result.armor !== undefined) {
+            m.economy = result.economy;
+            m.combat.armor = result.armor;
+          }
+        } else if (!error) {
           const result = tradeRifle(
             m.economy,
             m.combat.loadout,
@@ -93,9 +107,13 @@ export class MovementRoom extends Room {
       client.send("buyResult", {
         text:
           error ??
-          (isBuyRequest(value) && value.action === "refund"
-            ? "AR30 refunded."
-            : "AR30 purchased. Press 1 to equip."),
+          (isBuyRequest(value) && value.item === "armor"
+            ? value.action === "refund"
+              ? "Armor refunded."
+              : "Armor purchased."
+            : isBuyRequest(value) && value.action === "refund"
+              ? "AR30 refunded."
+              : "AR30 purchased. Press 1 to equip."),
       });
     });
     this.onMessage("input", (client, value: unknown) => {
@@ -214,7 +232,14 @@ export class MovementRoom extends Room {
       if (victimId) {
         const victim = this.members.get(victimId)!;
         c.hits++;
-        victim.combat.health = Math.max(0, victim.combat.health - def.damage);
+        const damage = applyArmorDamage(
+          victim.combat.health,
+          victim.combat.armor,
+          def.damage,
+          def.penetration,
+        );
+        victim.combat.health = damage.health;
+        victim.combat.armor = damage.armor;
         if (victim.combat.health === 0) {
           c.kills++;
           if (member.economy)
@@ -291,6 +316,7 @@ export class MovementRoom extends Room {
       const freshHalf =
         this.round?.phase === "waiting" || this.round?.phase === "halftime";
       if (freshHalf) m.economy = createEconomy();
+      m.combat.armor = !freshHalf && previous.health > 0 ? previous.armor : 0;
       m.combat.loadout = createLoadout(
         !freshHalf && previous.health > 0 ? previous.loadout.owned : ["pistol"],
       );

@@ -48,6 +48,7 @@ import {
 
 export type RangeHud = {
   economy?: EconomyState & {
+    armor: number;
     ownsRifle: boolean;
     restriction: string | null;
     epoch: number;
@@ -430,6 +431,7 @@ export function startRange(
               local.economy && local.combat && round
                 ? {
                     ...local.economy,
+                    armor: local.combat.armor,
                     ownsRifle: local.combat.loadout.owned.includes("rifle"),
                     restriction: buyRestriction(
                       round,

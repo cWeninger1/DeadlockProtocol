@@ -209,6 +209,9 @@ function Range({
               >
                 HP {hud.health}
               </strong>
+              {hud.economy && (
+                <span aria-label="Armor">Armor {hud.economy.armor}</span>
+              )}
               <span>
                 {multiplayer
                   ? rounds

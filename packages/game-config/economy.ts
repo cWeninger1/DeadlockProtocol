@@ -1,3 +1,4 @@
+import { armorRules } from "./armor";
 import type { Team } from "./combat";
 import type { Player } from "./movement";
 import type { RoundState } from "./round";
@@ -11,18 +12,21 @@ export const economyRules = {
   plantReward: 300,
   defuseReward: 300,
   riflePrice: 2700,
+  armorPrice: 650,
   buyRadius: 3,
 } as const;
 export type EconomyState = {
   money: number;
   losses: number;
   riflePurchaseEpoch: number | null;
+  armorPurchase: { epoch: number; previousArmor: number } | null;
 };
 export function createEconomy(): EconomyState {
   return {
     money: economyRules.startingMoney,
     losses: 0,
     riflePurchaseEpoch: null,
+    armorPurchase: null,
   };
 }
 export function credit(economy: EconomyState, amount: number): EconomyState {
@@ -42,6 +46,7 @@ export function rewardRound(economy: EconomyState, won: boolean): EconomyState {
     ),
     losses: won ? 0 : Math.min(economy.losses + 1, rewards.length),
     riflePurchaseEpoch: null,
+    armorPurchase: null,
   };
 }
 export function buyRestriction(
@@ -100,5 +105,39 @@ export function tradeRifle(
       active: "pistol" as const,
       readyAt: tick + weapons.pistol.equipTicks,
     },
+  };
+}
+
+export function tradeArmor(
+  economy: EconomyState,
+  armor: number,
+  epoch: number,
+  action: "buy" | "refund",
+) {
+  if (action === "buy") {
+    if (armor >= armorRules.capacity)
+      return { error: "Armor is already full." };
+    if (economy.money < economyRules.armorPrice)
+      return { error: "Not enough money for armor." };
+    return {
+      economy: {
+        ...economy,
+        money: economy.money - economyRules.armorPrice,
+        armorPurchase: { epoch, previousArmor: armor },
+      },
+      armor: armorRules.capacity,
+    };
+  }
+  const purchase = economy.armorPurchase;
+  if (!purchase || purchase.epoch !== epoch || armor !== armorRules.capacity)
+    return {
+      error: "Only unused armor bought in this freeze can be refunded.",
+    };
+  return {
+    economy: {
+      ...credit(economy, economyRules.armorPrice),
+      armorPurchase: null,
+    },
+    armor: purchase.previousArmor,
   };
 }

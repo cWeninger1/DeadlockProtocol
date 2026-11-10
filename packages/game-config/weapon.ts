@@ -1,6 +1,7 @@
 export const rangePistol = {
   name: "F12 Pistol",
   damage: 25,
+  penetration: 0.5,
   killReward: 300,
   automatic: false,
   equipTicks: 18,
@@ -65,6 +66,7 @@ export function updateWeapon(
 export const rangeRifle = {
   name: "AR30 Rifle",
   damage: 34,
+  penetration: 0.7,
   killReward: 300,
   automatic: true,
   capacity: 30,

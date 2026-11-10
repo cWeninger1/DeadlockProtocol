@@ -256,7 +256,7 @@ canvas {
   padding: 0.6rem;
 }
 .buy-menu {
-  width: min(36rem, calc(100vw - 4rem));
+  width: min(56rem, calc(100vw - 4rem));
   max-height: calc(100vh - 4rem);
   overflow: auto;
   padding: 1.5rem;
@@ -291,4 +291,21 @@ canvas {
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.buy-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.buy-items article {
+  margin: 0.5rem 0;
+}
+.buy-items button {
+  padding: 0.75rem;
+}
+@media (max-width: 760px) {
+  .buy-items {
+    grid-template-columns: 1fr;
+  }
 }
