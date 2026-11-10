@@ -1,4 +1,9 @@
 import {
+  spectatorViews,
+  spectatorViewLabels,
+  type SpectatorView,
+} from "./spectator";
+import {
   joinMovement,
   type MovementRoom,
   type NetworkStatus,
@@ -26,6 +31,8 @@ function Range({
     connected: false,
     players: 0,
   });
+  const [spectatorView, setSpectatorView] = useState<SpectatorView>("auto");
+  const spectatorRef = useRef<SpectatorView>("auto");
   const [life, setLife] = useState(0);
   const roomRef = useRef<MovementRoom | undefined>(undefined);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -58,6 +65,7 @@ function Range({
             setHud,
             joined,
             setNetworkStatus,
+            () => spectatorRef.current,
           );
       })
       .catch(() => {
@@ -155,6 +163,30 @@ function Range({
             / Hits {hud.hits}
           </p>
           <button onClick={leave}>Main menu</button>
+        </section>
+      ) : rounds && dead && hud?.spectator ? (
+        <section className="spectator-panel" aria-label="Spectator controls">
+          <h2>You died</h2>
+          <strong>{hud.spectator}</strong>
+          <p>Live spectator view. You return next round.</p>
+          <div aria-label="Spectator cameras">
+            {spectatorViews.map((view) => (
+              <button
+                key={view}
+                className="secondary"
+                aria-pressed={spectatorView === view}
+                onClick={() => {
+                  spectatorRef.current = view;
+                  setSpectatorView(view);
+                }}
+              >
+                {spectatorViewLabels[view]}
+              </button>
+            ))}
+          </div>
+          <button className="secondary" onClick={leave}>
+            Main menu
+          </button>
         </section>
       ) : locked && !dead ? (
         <>

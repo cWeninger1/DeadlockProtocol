@@ -16,7 +16,7 @@ The red striped area to the left of spawn deals 25 damage every half second whil
 
 A separate two-player mode runs waiting, warmup (5 seconds), freeze (20 seconds), active (115 seconds) and ending (5 seconds). Movement and weapons are enabled during active and planted play. Before planting, elimination wins for the surviving team; an unplanted timeout wins for defenders. The server deadline takes priority on the expiry tick. Team score increments once per completed round.
 
-Each freeze restores both players to their team spawns with 100 HP, full pistol/rifle ammunition and zero recoil. Kills/deaths persist. Manual respawn is unavailable, and dead players see a waiting message until the next freeze. Both teams are required: a departure aborts the sequence, clears team scores and waits for a replacement. The mode now completes regulation matches; spectator cameras remain outstanding.
+Each freeze restores both players to their team spawns with 100 HP, full pistol/rifle ammunition and zero recoil. Kills/deaths persist. Manual respawn is unavailable, and dead players watch live spectator views until the next freeze. Both teams are required: a departure aborts the sequence, clears team scores and waits for a replacement. The mode now completes regulation matches and includes spectator overview cameras.
 
 ## Objectives
 
@@ -33,3 +33,9 @@ Alpha and Bravo are permanent squad identities. Alpha starts attacking and Bravo
 First squad to 13 wins. If regulation ends 12-12 after round 24, the match is a draw; overtime is not enabled. Shared rule values define the half length, win threshold and halftime duration. On completion, play stops and a result screen displays winner/draw, final squad scores and personal stats. Players return to the menu to join another room.
 
 A departure before completion aborts the current match and clears team scores, returning the remaining player to the initial side assignment. A departure after completion preserves the final result. Finished rooms are locked against matchmaking joins.
+
+## Spectator views
+
+The current two-player round mode gives eliminated players static elevated views over Foundry and both sites. Auto selects the planted objective when present. Camera selection changes the view without changing the player's authoritative position or aim. The live scene, objective progress and round timer remain visible. Death releases the mouse and hides the weapon; there is no dead-player movement, firing, planting or manual respawn.
+
+The next life restores the spawn camera and offers Resume. Halftime and finished-match handling retain their existing behavior. These unrestricted overviews are appropriate to the current one-player-per-team test; teammate-only follow cameras and spectator visibility policy must precede larger competitive teams.

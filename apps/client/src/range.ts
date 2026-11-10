@@ -1,3 +1,4 @@
+import { spectatorPose, type SpectatorView } from "./spectator";
 import { createObjectiveAudio } from "./objectiveAudio";
 import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
 import { MovementPrediction } from "./networking/prediction";
@@ -45,6 +46,7 @@ import {
 } from "@dp/game-config";
 
 export type RangeHud = {
+  spectator: string | null;
   objective: string;
   objectiveProgress: number;
   round?: {
@@ -83,6 +85,7 @@ export function startRange(
   onHud: (hud: RangeHud) => void,
   room?: MovementRoom,
   onNetworkStatus: (status: NetworkStatus) => void = () => {},
+  getSpectatorView: () => SpectatorView = () => "auto",
 ) {
   const audio = createObjectiveAudio();
   const engine = new Engine(canvas, true);
@@ -97,6 +100,7 @@ export function startRange(
     scene,
   );
   camera.minZ = 0.05;
+  const spectatorTarget = new Vector3();
   const light = new HemisphericLight(
     "daylight",
     new Vector3(-0.6, 1, -0.3),
@@ -298,6 +302,8 @@ export function startRange(
   let objectiveProgress = 0;
   const reportHud = () => {
     const hud: RangeHud = {
+      spectator:
+        spectatorPose(round, vitals.health, getSpectatorView())?.label ?? null,
       objective: objectiveHint,
       objectiveProgress,
       round: round
@@ -822,6 +828,20 @@ export function startRange(
         previousPlayer.y + (player.y - previousPlayer.y) * alpha + eyeHeight,
         previousPlayer.z + (player.z - previousPlayer.z) * alpha,
       );
+    }
+    const observer = spectatorPose(round, vitals.health, getSpectatorView());
+    if (observer) {
+      camera.position.set(
+        observer.position.x,
+        observer.position.y,
+        observer.position.z,
+      );
+      spectatorTarget.set(
+        observer.target.x,
+        observer.target.y,
+        observer.target.z,
+      );
+      camera.setTarget(spectatorTarget);
     }
     flash.setEnabled(tick - lastShot < 3);
     slide.position.z = 0.51 - Math.max(0, 1 - (tick - lastShot) / 7) * 0.05;

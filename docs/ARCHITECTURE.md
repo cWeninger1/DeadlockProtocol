@@ -42,3 +42,9 @@ RoundState stores scores by stable squad ID (Alpha/Bravo), separate from the cur
 The pure round transition enters halftime after the first half, then freeze for the next numbered round. The room applies role changes and respawns once per epoch transition. A fresh freeze assigns the objective after roles have changed. Reaching the win threshold or regulation limit enters a terminal finished state after the last result display; a tied limit is a draw. The finished state is checked before missing-team handling, preserving completed results through disconnects. Colyseus locks finished rooms against new joins.
 
 The client receives the match format and final winner in snapshots, stops prediction/input under the existing phase gates and exits pointer lock. React renders final score and personal statistics. Production starts only the normal rooms. Playwright uses tests/server.ts to add a shortened match room with server-owned rules; it is never imported by the production entry point.
+
+## Spectator cameras
+
+The pure spectatorPose helper selects a camera position, target and label only for dead players during active, planted or ending phases. Babylon applies the pose after its normal player-camera update. React owns the camera selection through a ref read by the existing scene; changing views does not recreate the engine or network connection. Labels update from snapshots, while the scene continues rendering remote interpolation.
+
+No spectator messages or authoritative state changes are introduced. Existing dead-player server gates reject gameplay; the client sends idle controls. New-life handling resets prediction, eye height and camera rotation before restoring normal play. Navigation uses the same scene/engine, listener, network and audio disposal path. Finished-match UI takes priority over spectator controls.

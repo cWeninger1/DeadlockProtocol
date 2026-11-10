@@ -56,7 +56,7 @@ Deliverable: Two or more players can fight in the browser over a network.
 - [x] Add round victory conditions: elimination before planting, unplanted timeout, detonation and defuse.
 - [x] Add team scoring for completed rounds.
 - [x] Add round resets.
-- [ ] Add spectator mode.
+- [x] Add spectator mode for the two-player round test.
 
 Deliverable: Players can finish an entire round-based match.
 
@@ -157,3 +157,9 @@ Deliverable: A browser-accessible multiplayer game.
 
 - Match verification: 39 unit tests and all 21 Chrome browser/integration tests pass. Default-length 13-win and 24-round draw histories are covered by deterministic tests. Shortened server-owned match tests verify halftime roles/spawns/life reset, objective reassignment, score/stat preservation, blocked halftime/finished input, finished-room matchmaking exclusion, mouse release and both clients' result screens. Existing full-duration objectives and movement smoothness regressions pass. Formatting, lint, strict TypeScript and production build pass; the existing Babylon bundle warning remains. A complete regulation-length browser match, cross-browser behavior and internet play remain unverified.
 - Next Phase 4 slice: spectator mode for eliminated players. Phase 4 remains open until that behavior is implemented and tested.
+
+- Phase 4 spectator slice: eliminated round players enter a live overview with Auto, Foundry, Site A and Site B controls. Auto watches the planted device when present and otherwise shows Foundry. The bottom panel keeps the scene visible. Weapons and gameplay controls remain disabled while dead; new lives restore the player camera and Resume flow, and finished matches retain their results screen.
+- These overview cameras serve the current one-player-per-team test mode. Team-restricted follow cameras, visibility filtering and delayed observers for larger competitive teams remain future work.
+
+- Spectator verification: 41 unit tests and all 23 Chrome browser/integration tests pass. Browser checks exercise live objective and opponent updates, all fixed camera selections, disabled dead-player controls, automatic player-camera restoration, pointer-lock behavior and cleanup. Reviewed the overview screenshot and widened framing to include the near spawn. Formatting, lint, strict TypeScript and production build pass; the existing Babylon bundle-size warning remains. Cross-browser and internet spectator play remain unverified.
+- Phase 4 is complete for the initial two-player test mode. Larger-team spectator restrictions and the broader competitive map/team work remain outstanding as noted above. Next slice: Phase 5 server-authoritative currency and buy flow.
